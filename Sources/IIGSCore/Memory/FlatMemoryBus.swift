@@ -9,6 +9,7 @@ public final class FlatMemoryBus: IIGSBus {
     public let adbController = IIGSADBController()
     public let iwmController = IIGSIWMController()
     public let soundController = IIGSSoundController()
+    public private(set) var paddleController = IIGSPaddleController()
 
     public private(set) var cycleCount: UInt64 = 0
 
@@ -69,6 +70,18 @@ public final class FlatMemoryBus: IIGSBus {
 
     public func setVerticalBlankInterruptPending() {
         interruptState.setVerticalBlankPending()
+    }
+
+    public func setScanlineInterruptPending() {
+        interruptState.setScanlinePending()
+    }
+
+    public func setOneSecondInterruptPending() {
+        interruptState.setOneSecondPending()
+    }
+
+    public func setPaddlePosition(_ value: UInt8, paddle: UInt8) {
+        paddleController.setPosition(value, paddle: paddle)
     }
 
     private func advanceCycles(_ cycles: UInt64) {
@@ -220,6 +233,8 @@ public final class FlatMemoryBus: IIGSBus {
             return statusByte(softSwitches.eightyColumnVideo)
         case 0xC021:
             return 0
+        case 0xC023:
+            return interruptState.c023StatusRegister
         case 0xC022:
             return softSwitches.textColor
         case 0xC024:
@@ -240,6 +255,8 @@ public final class FlatMemoryBus: IIGSBus {
             return soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC031:
             return iwmController.readDriveControlRegister()
+        case 0xC032:
+            return 0
         case 0xC03C:
             return soundController.readSoundControl()
         case 0xC03D:
@@ -263,6 +280,11 @@ public final class FlatMemoryBus: IIGSBus {
             return softSwitches.speedRegister & 0xDF
         case 0xC068:
             return softSwitches.stateRegister
+        case 0xC064...0xC067:
+            return paddleController.read(paddle: UInt8(lowAddress & 0x0003), at: cycleCount)
+        case 0xC070:
+            paddleController.trigger(at: cycleCount)
+            return 0
         default:
             applyClassicSoftSwitch(lowAddress)
             return 0
@@ -288,6 +310,8 @@ public final class FlatMemoryBus: IIGSBus {
             adbController.clearKeyboardStrobe()
         case 0xC022:
             softSwitches.textColor = value
+        case 0xC023:
+            interruptState.c023EnableRegister = value
         case 0xC026:
             adbController.writeCommandData(value)
         case 0xC027:
@@ -298,6 +322,8 @@ public final class FlatMemoryBus: IIGSBus {
             softSwitches.slotROMSelect = value
         case 0xC031:
             iwmController.writeDriveControlRegister(value)
+        case 0xC032:
+            interruptState.clearC023Status(mask: value)
         case 0xC030:
             _ = soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC03C:
@@ -318,6 +344,10 @@ public final class FlatMemoryBus: IIGSBus {
             softSwitches.speedRegister = value & 0xDF
         case 0xC068:
             softSwitches.writeStateRegister(value)
+        case 0xC064...0xC067:
+            break
+        case 0xC070:
+            paddleController.trigger(at: cycleCount)
         default:
             applyClassicSoftSwitch(lowAddress)
         }

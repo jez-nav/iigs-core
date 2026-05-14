@@ -1,3 +1,3 @@
 public enum IIGSCore {
-    public static let version = "0.17.0-phase17"
+    public static let version = "0.18.0-phase18"
 }

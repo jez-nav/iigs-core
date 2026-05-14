@@ -179,6 +179,35 @@ final class Phase13CLIRuntimeTests: XCTestCase {
         XCTAssertTrue(result.stdout.contains("Mounted raw block image unit=2 blocks=1 readOnly=1"))
     }
 
+    func testPhase18RuntimeScriptCanAssertScanlineIRQAndClearIt() throws {
+        let binary = try writeTempFile(bytes: Array(repeating: 0xEA, count: 80))
+        let script = try writeTempFile(text: """
+        set FFFC 00
+        set FFFD 80
+        reset
+        set C023 04
+        cycles 65
+        assert status irq 1
+        assert mem C023 C4
+        set C032 40
+        assert mem C023 04
+        """)
+        defer {
+            removeTempFile(binary)
+            removeTempFile(script)
+        }
+
+        let result = try runCLI([
+            "--load", binary.path, "008000",
+            "--script", script.path
+        ])
+
+        XCTAssertEqual(result.status, 0)
+        XCTAssertTrue(result.stdout.contains("ASSERT OK status IRQ 1"))
+        XCTAssertTrue(result.stdout.contains("ASSERT OK mem $00C023 $C4"))
+        XCTAssertTrue(result.stdout.contains("ASSERT OK mem $00C023 $04"))
+    }
+
     func testInvalidCommandReturnsNonzeroAndUsefulError() throws {
         let result = try runCLI(["--command", "not-a-command"])
 

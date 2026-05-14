@@ -23,7 +23,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 15: completed for deterministic scheduler ownership, video cadence events, VBL interrupt routing, same-cycle ordering, CPU IRQ-line aggregation, speed-mode state, and initial paddle/DOC/disk event hooks.
 - Phase 16: completed for a full implementation-plan review and second gap map after Phases 14 and 15.
 - Phase 17: completed for debugger assertions, scriptable runtime state checks, scheduler event visibility, run-to-PC, raw/2IMG SmartPort image mounting commands, and CLI/runtime tests.
-- Phase 18: planned core correctness pass focused on the highest-risk boot and compatibility gaps found in Phase 16.
+- Phase 18: completed as a first core correctness pass for `$C023/$C032` interrupt state, scanline/one-second scheduler IRQ routing, deterministic paddle timer reads, and runtime harness coverage.
 - Phase 19: planned debugger quality pass after the conformance harness exposes the inspection workflows we actually need.
 
 ## Phase 13 Audit Snapshot
@@ -480,6 +480,8 @@ Tests:
 ## Phase 18: Core Correctness Pass 1
 
 Goal: fix the highest-risk core gaps revealed by Phase 16 and exercised by Phase 17 before adding more debugger polish.
+
+Status: completed as a first correctness slice. This pass adds observable `$C023/$C032` interrupt behavior, scheduler-driven scanline and one-second interrupt pending state, deterministic `$C064..$C067/$C070` paddle timing, and CLI runtime assertions that exercise the new soft-switch/interrupt behavior. CPU opcode conformance, slot ROM windows, floating bus, full scanline IRQ programming, SCC/clock/PRAM, disk timing, and deeper ROM startup checkpoints remain future correctness work.
 
 Implement:
 

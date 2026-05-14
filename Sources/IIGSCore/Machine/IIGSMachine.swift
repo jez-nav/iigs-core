@@ -260,16 +260,26 @@ public final class IIGSMachine {
             at: UInt64(IIGSVideoTiming.cyclesPerFrame),
             repeatingEvery: UInt64(IIGSVideoTiming.cyclesPerFrame)
         )
+        scheduler.schedule(
+            kind: .clockTick,
+            at: UInt64(IIGSVideoTiming.cyclesPerFrame * 60),
+            repeatingEvery: UInt64(IIGSVideoTiming.cyclesPerFrame * 60)
+        )
     }
 
     private func serviceScheduledEvents() {
         for event in scheduler.drainFiredEvents() {
             switch event.kind {
+            case .videoScanline:
+                memory.setScanlineInterruptPending()
             case .verticalBlankStart:
                 memory.setVerticalBlankInterruptPending()
-            case .paddleTimeout, .docOscillator, .disk, .scc, .clockTick, .custom:
+            case .clockTick:
+                memory.setOneSecondInterruptPending()
                 servicedDeviceEvents.append(event)
-            case .videoScanline, .verticalBlankEnd, .videoFrame:
+            case .paddleTimeout, .docOscillator, .disk, .scc, .custom:
+                servicedDeviceEvents.append(event)
+            case .verticalBlankEnd, .videoFrame:
                 break
             }
         }

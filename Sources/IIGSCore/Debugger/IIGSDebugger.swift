@@ -515,7 +515,7 @@ public final class IIGSDebuggerSession {
                 throw IIGSDebuggerError.assertionFailed("status \(name.uppercased()) expected \(bit(expected)) got \(bit(actual))")
             }
         case let .memory(address, expected):
-            let actual = machine.memory.debugRead8(at: address)
+            let actual = machine.memory.read8(at: address)
             if actual != expected {
                 throw IIGSDebuggerError.assertionFailed("memory \(formatAddress(address)) expected \(formatByte(expected)) got \(formatByte(actual))")
             }
