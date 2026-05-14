@@ -24,7 +24,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 16: completed for a full implementation-plan review and second gap map after Phases 14 and 15.
 - Phase 17: completed for debugger assertions, scriptable runtime state checks, scheduler event visibility, run-to-PC, raw/2IMG SmartPort image mounting commands, and CLI/runtime tests.
 - Phase 18: completed as a first core correctness pass for `$C023/$C032` interrupt state, scanline/one-second scheduler IRQ routing, deterministic paddle timer reads, and runtime harness coverage.
-- Phase 19: planned debugger quality pass after the conformance harness exposes the inspection workflows we actually need.
+- Phase 19: completed as a first debugger quality pass with core disassembly APIs, CLI disassembly/register editing, macOS disassembly and inspector panels, and tests.
 
 ## Phase 13 Audit Snapshot
 
@@ -502,6 +502,8 @@ Tests:
 ## Phase 19: Debugger Quality Pass
 
 Goal: improve the macOS debugger after Phase 17 and 18 clarify which inspection tools are needed most.
+
+Status: completed as a first quality pass. This adds framework-neutral disassembly/decode APIs, CLI `disasm` and `setreg` commands, editable macOS register/memory controls, a disassembly panel, and lightweight interrupt/scheduler inspector data in debugger snapshots. Future debugger passes can broaden opcode formatting coverage, add watchpoints, media-mount controls, device-specific inspector panes, and exportable trace streams.
 
 Implement:
 

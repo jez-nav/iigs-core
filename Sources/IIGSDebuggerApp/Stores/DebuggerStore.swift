@@ -6,10 +6,16 @@ final class DebuggerStore: ObservableObject {
     @Published var snapshot: IIGSDebuggerSnapshot
     @Published var memoryBank = "00"
     @Published var memoryRows: [IIGSDebuggerMemoryRow] = []
+    @Published var memoryWriteAddress = "002000"
+    @Published var memoryWriteValue = "00"
+    @Published var disassemblyStart = "008000"
+    @Published var disassemblyRows: [IIGSDisassembledInstruction] = []
     @Published var binaryLoadAddress = "008000"
     @Published var stepCount = "1"
     @Published var runLimit = "1000"
     @Published var breakpointAddress = "008000"
+    @Published var registerName = "PC"
+    @Published var registerValue = "8000"
     @Published var breakpoints = "No breakpoints"
     @Published var commandText = ""
     @Published private(set) var logText = ""
@@ -37,6 +43,7 @@ final class DebuggerStore: ObservableObject {
         self.statsDate = now
         self.statsCycleCount = session.snapshot().timing.cycles
         refreshMemoryRows()
+        refreshDisassemblyRows()
         append("IIGSDebugger ready")
     }
 
@@ -85,6 +92,25 @@ final class DebuggerStore: ObservableObject {
         perform(.runCycles(parsedPositiveInt(runLimit, defaultValue: 1_000)))
     }
 
+    func writeMemoryByte() {
+        do {
+            let address = try parser.parseAddress(memoryWriteAddress)
+            let value = try parser.parseByte(memoryWriteValue)
+            perform(.writeMemory(address, value))
+        } catch {
+            append(error, prefix: "Memory write failed")
+        }
+    }
+
+    func writeRegister() {
+        do {
+            let value = try parser.parseAddress(registerValue)
+            perform(.writeRegister(registerName, value))
+        } catch {
+            append(error, prefix: "Register write failed")
+        }
+    }
+
     func addBreakpoint() {
         do {
             perform(.addBreakpoint(try parser.parseAddress(breakpointAddress)))
@@ -116,6 +142,16 @@ final class DebuggerStore: ObservableObject {
         memoryRows = session.memoryRows(bank: bank, startOffset: 0, rowCount: 0x10000 / IIGSDebuggerMemoryRow.bytesPerRow)
     }
 
+    func refreshDisassemblyRows() {
+        do {
+            let address = try parser.parseAddress(disassemblyStart)
+            disassemblyStart = formatAddress(address).replacingOccurrences(of: "$", with: "")
+            disassemblyRows = session.disassemblyRows(startingAt: address, count: 48)
+        } catch {
+            append(error, prefix: "Disassembly failed")
+        }
+    }
+
     func updateMemoryBank() {
         guard let bank = parseBank(memoryBank) else {
             return
@@ -144,6 +180,7 @@ final class DebuggerStore: ObservableObject {
     func refreshAll() {
         snapshot = session.snapshot()
         refreshMemoryRows()
+        refreshDisassemblyRows()
         breakpoints = (try? session.execute(.listBreakpoints)) ?? "No breakpoints"
     }
 

@@ -59,6 +59,10 @@
 		1A0000010000000000000039 /* TimingPhase15Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000138 /* TimingPhase15Tests.swift */; };
 		1A000001000000000000003A /* IIGSPaddleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000139 /* IIGSPaddleController.swift */; };
 		1A000001000000000000003B /* CoreCorrectnessPhase18Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */; };
+		1A000001000000000000003C /* IIGSDisassembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013B /* IIGSDisassembler.swift */; };
+		1A000001000000000000003D /* DebuggerPhase19Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013C /* DebuggerPhase19Tests.swift */; };
+		1A000001000000000000003E /* DisassemblyPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013D /* DisassemblyPanel.swift */; };
+		1A000001000000000000003F /* InspectorPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013E /* InspectorPanel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -159,6 +163,10 @@
 		1A0000010000000000000138 /* TimingPhase15Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingPhase15Tests.swift; sourceTree = "<group>"; };
 		1A0000010000000000000139 /* IIGSPaddleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSPaddleController.swift; sourceTree = "<group>"; };
 		1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreCorrectnessPhase18Tests.swift; sourceTree = "<group>"; };
+		1A000001000000000000013B /* IIGSDisassembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSDisassembler.swift; sourceTree = "<group>"; };
+		1A000001000000000000013C /* DebuggerPhase19Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase19Tests.swift; sourceTree = "<group>"; };
+		1A000001000000000000013D /* DisassemblyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisassemblyPanel.swift; sourceTree = "<group>"; };
+		1A000001000000000000013E /* InspectorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorPanel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -322,6 +330,7 @@
 			children = (
 				1A0000010000000000000127 /* IIGSDebugger.swift */,
 				1A0000010000000000000134 /* IIGSDebuggerSnapshot.swift */,
+				1A000001000000000000013B /* IIGSDisassembler.swift */,
 			);
 			path = Debugger;
 			sourceTree = "<group>";
@@ -368,6 +377,8 @@
 				1A0000010000000000000130 /* RegisterPanel.swift */,
 				1A0000010000000000000131 /* MemoryPanel.swift */,
 				1A0000010000000000000132 /* BreakpointPanel.swift */,
+				1A000001000000000000013D /* DisassemblyPanel.swift */,
+				1A000001000000000000013E /* InspectorPanel.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -399,6 +410,7 @@
 				1A0000010000000000000135 /* DebuggerPhase14Tests.swift */,
 				1A0000010000000000000138 /* TimingPhase15Tests.swift */,
 				1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */,
+				1A000001000000000000013C /* DebuggerPhase19Tests.swift */,
 			);
 			path = IIGSCoreTests;
 			sourceTree = "<group>";
@@ -559,6 +571,7 @@
 				1A000001000000000000001F /* IIGSSoundController.swift in Sources */,
 				1A0000010000000000000023 /* IIGSDebugger.swift in Sources */,
 				1A0000010000000000000035 /* IIGSDebuggerSnapshot.swift in Sources */,
+				1A000001000000000000003C /* IIGSDisassembler.swift in Sources */,
 				1A0000010000000000000037 /* IIGSEventScheduler.swift in Sources */,
 				1A0000010000000000000038 /* IIGSInterruptState.swift in Sources */,
 			);
@@ -584,6 +597,7 @@
 				1A0000010000000000000036 /* DebuggerPhase14Tests.swift in Sources */,
 				1A0000010000000000000039 /* TimingPhase15Tests.swift in Sources */,
 				1A000001000000000000003B /* CoreCorrectnessPhase18Tests.swift in Sources */,
+				1A000001000000000000003D /* DebuggerPhase19Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -606,6 +620,8 @@
 				1A000001000000000000002C /* RegisterPanel.swift in Sources */,
 				1A000001000000000000002D /* MemoryPanel.swift in Sources */,
 				1A000001000000000000002E /* BreakpointPanel.swift in Sources */,
+				1A000001000000000000003E /* DisassemblyPanel.swift in Sources */,
+				1A000001000000000000003F /* InspectorPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -54,7 +54,9 @@ public enum IIGSDebuggerCommand: Equatable, Sendable {
     case removeBreakpoint(UInt32)
     case listBreakpoints
     case readMemory(UInt32, Int)
+    case disassemble(UInt32, Int)
     case writeMemory(UInt32, UInt8)
+    case writeRegister(String, UInt32)
     case assertion(IIGSDebuggerAssertion)
 }
 
@@ -98,8 +100,12 @@ public struct IIGSDebuggerCommandParser: Sendable {
             return .listBreakpoints
         case "m", "mem", "memory":
             return try parseReadMemory(parts.dropFirst())
+        case "d", "dis", "disasm", "disassemble":
+            return try parseDisassemble(parts.dropFirst())
         case "set", "write":
             return try parseWriteMemory(parts.dropFirst())
+        case "setreg", "regset":
+            return try parseWriteRegister(parts.dropFirst())
         case "assert":
             return .assertion(try parseAssertion(parts.dropFirst()))
         default:
@@ -188,6 +194,12 @@ public struct IIGSDebuggerCommandParser: Sendable {
         let address = try parseRequiredAddress(parts, name: "program counter")
         let limit = try parseOptionalCount(parts.dropFirst(), defaultValue: 10_000)
         return .runUntilPC(address, limit)
+    }
+
+    private func parseDisassemble(_ parts: ArraySlice<String>) throws -> IIGSDebuggerCommand {
+        let address = try parseRequiredAddress(parts, name: "disassembly address")
+        let count = try parseOptionalCount(parts.dropFirst(), defaultValue: 12)
+        return .disassemble(address, count)
     }
 
     private func parseScheduleEvent(_ parts: ArraySlice<String>) throws -> IIGSDebuggerCommand {
@@ -296,6 +308,14 @@ public struct IIGSDebuggerCommandParser: Sendable {
         return .writeMemory(address, try parseByte(value))
     }
 
+    private func parseWriteRegister(_ parts: ArraySlice<String>) throws -> IIGSDebuggerCommand {
+        guard let name = parts.first else {
+            throw IIGSDebuggerError.missingArgument("register name")
+        }
+        let value = try parseRequiredAddress(parts.dropFirst(), name: "register value")
+        return .writeRegister(name, value)
+    }
+
     private func normalizeNumber(_ text: String) -> String {
         var value = text.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if value.hasPrefix("$") {
@@ -319,6 +339,7 @@ public struct IIGSDebuggerCommandParser: Sendable {
 public final class IIGSDebuggerSession {
     public let machine: IIGSMachine
     public private(set) var breakpoints: Set<UInt32> = []
+    private let disassembler = IIGSDisassembler()
 
     public init(machine: IIGSMachine = IIGSMachine()) {
         self.machine = machine
@@ -347,6 +368,15 @@ public final class IIGSDebuggerSession {
             }
             return IIGSDebuggerMemoryRow(bank: bank, offset: offset, bytes: bytes)
         }
+    }
+
+    public func disassemblyRows(startingAt address: UInt32, count: Int) -> [IIGSDisassembledInstruction] {
+        disassembler.decode(
+            at: address,
+            count: count,
+            readByte: { [machine] address in machine.memory.debugRead8(at: address) },
+            options: IIGSDisassemblyOptions(registers: machine.cpu.registers)
+        )
     }
 
     @discardableResult
@@ -386,9 +416,14 @@ public final class IIGSDebuggerSession {
             return formatBreakpoints()
         case let .readMemory(address, count):
             return readMemory(at: address, count: count)
+        case let .disassemble(address, count):
+            return disassemble(at: address, count: count)
         case let .writeMemory(address, value):
             machine.memory.write8(value, at: address)
             return "\(formatAddress(address)) <- \(formatByte(value))"
+        case let .writeRegister(name, value):
+            try writeRegister(named: name, value: value)
+            return "\(name.uppercased()) <- $\(formatHex(value, width: registerWidth(named: name)))"
         case let .assertion(assertion):
             try evaluate(assertion)
             return "ASSERT OK \(formatAssertion(assertion))"
@@ -426,7 +461,9 @@ public final class IIGSDebuggerSession {
       bc <addr>             Clear breakpoint
       bl                    List breakpoints
       mem <addr> [count]    Read memory
+      disasm <addr> [count] Disassemble memory using current CPU widths
       set <addr> <byte>     Write memory
+      setreg <name> <value> Write CPU register
       assert pc <addr>
       assert reg <name> <value>
       assert flag <name> <0|1>
@@ -457,6 +494,17 @@ public final class IIGSDebuggerSession {
             values.append(formatByte(machine.memory.read8(at: address &+ UInt32(offset))))
         }
         return "\(formatAddress(address)): \(values.joined(separator: " "))"
+    }
+
+    private func disassemble(at address: UInt32, count: Int) -> String {
+        let rows = disassemblyRows(startingAt: address, count: count)
+        guard !rows.isEmpty else {
+            return "No disassembly"
+        }
+        return rows.map { row in
+            let byteText = row.bytes.map(formatByte).joined(separator: " ")
+            return "\(formatAddress(row.address)): \(byteText.padding(toLength: 14, withPad: " ", startingAt: 0)) \(row.text)"
+        }.joined(separator: "\n")
     }
 
     private func scheduleEvent(_ kind: IIGSEventKind, afterCycles cycles: UInt64, payload: UInt32) {
@@ -568,6 +616,39 @@ public final class IIGSDebuggerSession {
             return UInt32(r.status.rawValue)
         case "e":
             return r.emulationMode ? 1 : 0
+        default:
+            throw IIGSDebuggerError.invalidArgument(name)
+        }
+    }
+
+    private func writeRegister(named name: String, value: UInt32) throws {
+        let normalized = name.lowercased()
+        switch normalized {
+        case "pc":
+            machine.cpu.updateRegisters { $0.programCounter = UInt16(truncatingIfNeeded: value) }
+        case "pbr":
+            machine.cpu.updateRegisters { $0.programBank = UInt8(truncatingIfNeeded: value) }
+        case "addr", "address":
+            machine.cpu.updateRegisters {
+                $0.programBank = UInt8(truncatingIfNeeded: value >> 16)
+                $0.programCounter = UInt16(truncatingIfNeeded: value)
+            }
+        case "a":
+            machine.cpu.updateRegisters { $0.accumulator = UInt16(truncatingIfNeeded: value) }
+        case "x":
+            machine.cpu.updateRegisters { $0.x = UInt16(truncatingIfNeeded: value) }
+        case "y":
+            machine.cpu.updateRegisters { $0.y = UInt16(truncatingIfNeeded: value) }
+        case "s", "sp":
+            machine.cpu.updateRegisters { $0.stackPointer = UInt16(truncatingIfNeeded: value) }
+        case "d", "dp":
+            machine.cpu.updateRegisters { $0.directPage = UInt16(truncatingIfNeeded: value) }
+        case "dbr":
+            machine.cpu.updateRegisters { $0.dataBank = UInt8(truncatingIfNeeded: value) }
+        case "p":
+            machine.cpu.updateRegisters { $0.status = ProcessorStatus(rawValue: UInt8(truncatingIfNeeded: value)) }
+        case "e":
+            machine.cpu.updateRegisters { $0.emulationMode = value & 1 != 0 }
         default:
             throw IIGSDebuggerError.invalidArgument(name)
         }

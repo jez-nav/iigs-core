@@ -20,6 +20,8 @@ struct ContentView: View {
                 VStack(spacing: 12) {
                     DisplayProbePanel(store: store)
                         .frame(height: 190)
+                    DisassemblyPanel(store: store)
+                        .frame(minHeight: 210)
                     MemoryPanel(store: store)
                 }
                 .padding(12)
@@ -29,6 +31,7 @@ struct ContentView: View {
                     RegisterPanel(snapshot: store.snapshot)
                     TimingPanel(store: store)
                     MousePanel(store: store, mouse: store.snapshot.mouse)
+                    InspectorPanel(snapshot: store.snapshot)
                     BreakpointPanel(store: store)
                     LogPanel(logText: store.logText)
                 }

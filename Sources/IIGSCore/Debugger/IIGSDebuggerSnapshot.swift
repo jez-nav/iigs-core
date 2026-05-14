@@ -97,12 +97,54 @@ public struct IIGSDebuggerMouseSnapshot: Equatable, Sendable {
     }
 }
 
+public struct IIGSDebuggerInterruptSnapshot: Equatable, Sendable {
+    public let videoEnable: UInt8
+    public let videoStatus: UInt8
+    public let c023Enable: UInt8
+    public let c023Status: UInt8
+    public let verticalBlankPending: Bool
+    public let quarterSecondPending: Bool
+    public let scanlinePending: Bool
+    public let oneSecondPending: Bool
+    public let irqAsserted: Bool
+
+    public init(interruptState: IIGSInterruptState) {
+        self.videoEnable = interruptState.enableRegister
+        self.videoStatus = interruptState.videoStatusRegister
+        self.c023Enable = interruptState.c023EnableRegister
+        self.c023Status = interruptState.c023StatusRegister
+        self.verticalBlankPending = interruptState.verticalBlankPending
+        self.quarterSecondPending = interruptState.quarterSecondPending
+        self.scanlinePending = interruptState.c023PendingRegister & IIGSInterruptState.c023ScanlinePendingMask != 0
+        self.oneSecondPending = interruptState.c023PendingRegister & IIGSInterruptState.c023OneSecondPendingMask != 0
+        self.irqAsserted = interruptState.irqAsserted
+    }
+}
+
+public struct IIGSDebuggerEventSnapshot: Equatable, Identifiable, Sendable {
+    public let id: UInt64
+    public let cycle: UInt64
+    public let kind: IIGSEventKind
+    public let payload: UInt32
+    public let interval: UInt64?
+
+    public init(event: IIGSScheduledEvent) {
+        self.id = event.id
+        self.cycle = event.cycle
+        self.kind = event.kind
+        self.payload = event.payload
+        self.interval = event.interval
+    }
+}
+
 public struct IIGSDebuggerSnapshot: Equatable, Sendable {
     public let registers: IIGSDebuggerRegisterSnapshot
     public let flags: IIGSDebuggerFlagSnapshot
     public let status: IIGSDebuggerStatusSnapshot
     public let timing: IIGSDebuggerTimingSnapshot
     public let mouse: IIGSDebuggerMouseSnapshot
+    public let interrupts: IIGSDebuggerInterruptSnapshot
+    public let pendingEvents: [IIGSDebuggerEventSnapshot]
 
     public init(machine: IIGSMachine) {
         self.registers = IIGSDebuggerRegisterSnapshot(registers: machine.cpu.registers)
@@ -110,6 +152,8 @@ public struct IIGSDebuggerSnapshot: Equatable, Sendable {
         self.status = IIGSDebuggerStatusSnapshot(cpu: machine.cpu)
         self.timing = IIGSDebuggerTimingSnapshot(cycles: machine.memory.cycleCount)
         self.mouse = IIGSDebuggerMouseSnapshot(adbController: machine.memory.adbController)
+        self.interrupts = IIGSDebuggerInterruptSnapshot(interruptState: machine.memory.interruptState)
+        self.pendingEvents = machine.scheduler.pendingEvents().prefix(16).map(IIGSDebuggerEventSnapshot.init(event:))
     }
 }
 

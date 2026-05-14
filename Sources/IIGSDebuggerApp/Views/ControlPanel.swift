@@ -60,6 +60,49 @@ struct ControlPanel: View {
                 .padding(.vertical, 4)
             }
 
+            GroupBox("Edit") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        TextField("Reg", text: $store.registerName)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 56)
+                            .monospaced()
+
+                        TextField("Value", text: $store.registerValue)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 92)
+                            .monospaced()
+
+                        Button {
+                            store.writeRegister()
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                        }
+                        .help("Write register")
+                    }
+
+                    HStack {
+                        TextField("Address", text: $store.memoryWriteAddress)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 92)
+                            .monospaced()
+
+                        TextField("Byte", text: $store.memoryWriteValue)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 56)
+                            .monospaced()
+
+                        Button {
+                            store.writeMemoryByte()
+                        } label: {
+                            Image(systemName: "square.and.arrow.down")
+                        }
+                        .help("Write memory byte")
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
             GroupBox("Command") {
                 HStack {
                     TextField("regs", text: $store.commandText)
