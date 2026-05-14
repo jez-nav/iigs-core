@@ -9,7 +9,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 2: completed.
 - Phase 3: completed for ROM image validation/mapping.
 - Phase 4: completed for the implemented soft-switch and language-card scope.
-- Phase 5: partially completed earlier as video/slow-memory shadowing; the original Phase 5 timing/event scheduler still needs to be revisited as a proper phase.
+- Phase 5: partially completed earlier as video/slow-memory shadowing; superseded by the Phase 15 scheduler foundation, with remaining timing accuracy tracked in later hardening work.
 - Phase 6: partially completed. It now includes timing-visible video registers, text/SHR rendering, and the Phase 6.5 classic lores/hires extension.
 - Phase 6.5: completed as an unplanned extension for classic lores/hires rendering and mixed mode. This was originally labeled Phase 7 in code, but has been renamed to avoid conflict with the real Phase 7.
 - Phase 7: completed for MVP ADB, keyboard, and mouse register behavior. Deeper firmware-accurate ADB timing and device negotiation can be expanded later.
@@ -21,6 +21,10 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 13: completed for first-pass spec audit, CLI runtime tests, script-based command execution, ROM01 CLI smoke coverage, and subsystem status marking.
 - Phase 14: completed for a separate macOS SwiftUI debugger app target built on `IIGSCore.framework`, with ROM/binary load, stepping/running, registers, memory dump, breakpoints, command log, shared scheme, and project-local run action.
 - Phase 15: completed for deterministic scheduler ownership, video cadence events, VBL interrupt routing, same-cycle ordering, CPU IRQ-line aggregation, speed-mode state, and initial paddle/DOC/disk event hooks.
+- Phase 16: completed for a full implementation-plan review and second gap map after Phases 14 and 15.
+- Phase 17: planned runtime conformance harness expansion using `IIGSDebuggerCLI` as a scriptable emulator test runner.
+- Phase 18: planned core correctness pass focused on the highest-risk boot and compatibility gaps found in Phase 16.
+- Phase 19: planned debugger quality pass after the conformance harness exposes the inspection workflows we actually need.
 
 ## Phase 13 Audit Snapshot
 
@@ -39,6 +43,35 @@ This first audit pass compares the implemented phases against `IIGS-Spec/01-Syst
 | Sound / Ensoniq DOC | partial | Speaker toggles, DOC RAM/register access, delayed reads, oscillator stop IRQ queue, and deterministic sample buffers are tested. Remaining risk: full oscillator modes, scan-rate-derived timing, sync/swap behavior, decay model, and integration with the central event scheduler. |
 | ROM boot harness | partial | ROM load/reset, deterministic step/run, cycle-budget stops, breakpoint stops, storage mount APIs, no-media smoke coverage, and local ROM01 reset are covered. Remaining risk: running ROM startup deeper, slot 5/6/7 boot selection through firmware-visible hardware, ROM03 fixture coverage, and self-test/diagnostic paths. |
 | Debugger CLI/runtime harness | MVP | Parser/session APIs, CLI help, binary loading, reset-vector patching, stepping, register/memory inspection, breakpoints, script execution, invalid command errors, and local ROM01 reset smoke are covered by XCTest. |
+
+## Phase 16 Audit Snapshot
+
+This second audit pass reviews the post-Phase-15 codebase against `IIGS-Spec/01-System-Overview.md` through `IIGS-Spec/16-Test-Cases.md`. It does not demote the value of the MVP work already done; it marks the places where the current implementation is still too happy-path for ROM booting, GS/OS, timing-sensitive software, or debugger-driven conformance.
+
+| Subsystem | Status | Phase 16 Gap Map |
+| --- | --- | --- |
+| Project/package foundation | MVP | The framework/test/app/CLI targets build cleanly and `IIGSCore.framework` remains platform-neutral. Keep this stable while adding more fixtures and generated test data. |
+| 65C816 CPU | partial | The opcode switch covers all 256 opcodes and core register/stack/decimal/interruption behavior has tests. Missing hardening: independent opcode matrix fixtures, exact cycle classes, dummy reads, read-modify-write bus sequences, page/bank wrap edge cases, interrupt recognition after `CLI`/`PLP`/`RTI`, `WAI` edge cases, and compatibility checks against documented 65C816 behavior. |
+| Memory and ROM mapping | partial | ROM01/ROM03 mapping, banked memory, language-card MVP, aux memory, and shadow writes exist. Missing hardening: installed RAM sizing model, absent-RAM/open-bus behavior, `$E0/$E1` I/O visibility rules, Cx/C8 slot ROM windows, `INTCXROM`/`INTC8ROM` details, ROMBANK behavior, and more language-card access-sequence tests. |
+| Soft switches and Apple II compatibility bus | partial | Keyboard, aux RAM switches, `ALTZP`, classic video switches, `$C035`, `$C036`, `$C041/$C046/$C047`, `$C068`, DOC, ADB, and IWM ranges have modeled entry points. Missing hardening: floating-bus values, paddles/annunciators, `$C023` scanline/second interrupts, `$C032`, full `$C011..$C01F` status matrix, slot register side effects, and exact read/write behavior for rarely used switches. |
+| Timing and scheduler | partial | A central deterministic scheduler now owns video cadence events, VBL interrupt routing, same-cycle ordering, and paddle/DOC/disk event hooks. Missing hardening: effective slow/fast CPU throughput, slow memory/I/O wait states, scanline IRQs, quarter/one-second events, DOC rescheduling on register changes, IWM motor/media delays, SCC/clock events, and event-driven run-until semantics. |
+| Interrupt aggregation | partial | CPU IRQ line aggregation now includes IIgs interrupt state, ADB, and DOC pending state. Missing hardening: `$C023` sources, SCC, expansion-card IRQs, exact VBL latch transformations, DOC clear semantics through the bus, IRQ deassertion after masking, and NMI/ABORT device paths. |
+| Video | partial | Classic text, lores, hires, mixed mode, SHR 320/640/fill, palette reads, and frame-owned pixel buffers exist. Missing hardening: real glyph shapes, 80-column/double-hires memory ordering, artifact color, border/display fetch timing, mid-line soft-switch effects, floating-bus video fetches, scanline IRQ interaction, and broader golden-frame hashes. |
+| Input / ADB | partial | Apple II keyboard strobe and ADB keyboard/mouse MVP behavior are modeled, including ROM01/ROM03 revision values and basic interrupt gating. Missing hardening: fuller ADB command set, address negotiation/collision behavior, controller timing states, keymap translation, low-memory mouse firmware contracts, mode/config behavior, and interrupt edge cases during queued packets. |
+| Storage / SmartPort | partial | Raw block media, 2IMG, unit status, read/write/format, write-protect, and direct firmware-entry helper APIs exist. Missing hardening: actual slot firmware bytes/entry execution, ProDOS global command path, extended status/control behavior, disk-switched transient status, partition/container metadata, and ROM-visible boot selection. |
+| Storage / IWM and floppy media | partial | IWM latches, phase stepping, motor/drive select, write-protect, raw/NIB/WOZ containers, raw track reads/writes, and 3.5 control MVP exist. Missing hardening: GCR encode/decode, bit-cell timing, WOZ CRC/writeback semantics, 3.5 drive protocol depth, motor-off delay, disk-switched status, and copy-protection-sensitive timing. |
+| Sound / Ensoniq DOC | partial | Speaker toggles, DOC RAM/register access, delayed reads, oscillator sample stepping, stop-on-zero IRQ queue, and deterministic sample buffers exist. Missing hardening: frequency-derived oscillator timing, wave-size behavior, swap/sync/free-run modes, volume/envelope accuracy, scheduler integration for oscillator completion, and mixed speaker/DOC timing. |
+| ROM boot harness | partial | ROM load/reset, no-media smoke, breakpoints, cycle budgets, and storage mount APIs exist. Missing hardening: deeper ROM01 execution checkpoints, ROM03 smoke fixture, slot 5/6/7 firmware-visible boot paths, diagnostic/self-test paths, and runtime assertions for hardware-visible state during ROM startup. |
+| Debugger CLI | MVP | Commands cover help/reset/registers/step/run/cycles/breakpoints/memory/set plus script execution and CLI tests. Missing hardening: assert commands, disassembly, event/IRQ inspection, trace controls, media mount commands, ROM startup scripts, and clearer machine-readable output for XCTest. |
+| macOS debugger app | MVP | The app can load ROM/binaries, step/run, show registers/status/timing/mouse, display banked memory, manage breakpoints, and show command logs. Missing hardening: disassembly, editable registers/memory, watchpoints, event/IRQ panels, media management, better pause/run loop behavior, and UI smoke automation. |
+| SCC serial, clock, and parameter RAM | missing | Specs identify SCC, clock, and PRAM as IIgs-visible hardware, but there is no implementation yet. These are not first in line unless ROM startup proves they block progress, but they need explicit phases before compatibility work is considered broad. |
+
+Phase 16 priority conclusion:
+
+1. Build a stronger runtime conformance harness before adding more large devices.
+2. Use that harness to run ROM01 and small binaries to named checkpoints with assertions.
+3. Fix CPU, memory, soft-switch, and interrupt gaps first because every later subsystem depends on those contracts.
+4. Improve the GUI debugger after the runtime harness tells us which inspection workflows are most useful.
 
 ## Phase 0: Project Foundation
 
@@ -399,6 +432,89 @@ Tests:
 - IRQ is taken at the next instruction boundary after an enabled event source asserts.
 - Multiple same-cycle events are serviced deterministically.
 - Paddle timeout and DOC oscillator completion are driven by scheduler time, not host time.
+
+## Phase 16: Full Core Audit and Gap Map
+
+Goal: review the whole implementation after the first debugger and scheduler passes, then turn the remaining unknowns into an explicit roadmap.
+
+Status: completed. See `Phase 16 Audit Snapshot` above.
+
+Implement:
+
+- Re-read the current plan against the local specs and implemented source/tests.
+- Classify every subsystem as `MVP`, `partial`, `needs correction`, or `missing`.
+- Identify boot-critical gaps separately from polish/debugger gaps.
+- Add Phases 17, 18, and 19 to keep the next work ordered.
+- Preserve the rule that `IIGSCore.framework` remains host-platform neutral.
+
+Tests:
+
+- No new emulator behavior is required in this phase.
+- Run the existing macOS XCTest suite after plan edits to make sure the audit did not disturb project files.
+- Build the generic iOS framework if project files change.
+
+## Phase 17: Runtime Conformance Harness Expansion
+
+Goal: make `IIGSDebuggerCLI` a stronger scriptable test runner for emulator runtime behavior.
+
+Implement:
+
+- Add debugger script assertions for registers, flags, memory bytes/ranges, PC, cycle counts, soft-switch state, interrupt state, and scheduler state.
+- Add commands to load ROMs, load binaries, mount block/floppy media fixtures, and run until PC, breakpoint, cycle, event, or named stop reason.
+- Add machine-readable command output mode for XCTest-friendly parsing.
+- Add trace controls for CPU steps, bus reads/writes, interrupt changes, and scheduled events.
+- Add fixture scripts for tiny binaries that exercise CPU/memory/soft-switch/timing behavior.
+- Add ROM01 startup scripts that run to conservative checkpoints when the local legal ROM fixture exists.
+- Keep CLI behavior deterministic and independent of host wall-clock timing.
+
+Tests:
+
+- Assertion pass/fail commands return useful output and exit status.
+- Runtime scripts can validate register, memory, flag, soft-switch, and scheduler state.
+- ROM01 fixture smoke can run to multiple named checkpoints without crashing when the local ROM is present.
+- Invalid assertions fail clearly.
+- Existing CLI commands remain backward compatible.
+
+## Phase 18: Core Correctness Pass 1
+
+Goal: fix the highest-risk core gaps revealed by Phase 16 and exercised by Phase 17 before adding more debugger polish.
+
+Implement:
+
+- CPU conformance pass for opcode/addressing/flag/cycle edge cases that block runtime scripts.
+- Memory-map pass for installed RAM sizing, absent-RAM/open-bus behavior, slot ROM windows, and `$E0/$E1` I/O visibility.
+- Soft-switch pass for `$C023`, `$C032`, paddles, floating bus, slot register side effects, and less common `$C000..$C0FF` behavior.
+- Interrupt pass for scanline, quarter/one-second, DOC clear, ADB masking, and IRQ deassertion.
+- Timing pass for effective slow/fast throughput and wait-state visible behavior where tests can observe it.
+- ROM boot pass that advances ROM01 farther through startup checkpoints.
+
+Tests:
+
+- CPU opcode/addressing fixtures for edge cases from `IIGS-Spec/16-Test-Cases.md`.
+- Runtime conformance scripts for memory mapping, soft switches, interrupts, and scheduler events.
+- ROM01 checkpoint tests with local legal ROM fixture.
+- Regression tests for every corrected bug found during the pass.
+
+## Phase 19: Debugger Quality Pass
+
+Goal: improve the macOS debugger after Phase 17 and 18 clarify which inspection tools are needed most.
+
+Implement:
+
+- Add a disassembly panel backed by framework-neutral decode APIs.
+- Add editable register and memory controls with validation.
+- Add watchpoints and richer breakpoint management.
+- Add event scheduler, IRQ source, soft-switch, ADB, DOC, SmartPort, and IWM inspector panels.
+- Add media mounting controls for ROM, raw/2IMG block images, and floppy image fixtures.
+- Improve pause/resume/run-loop behavior so snapshots are stable during inspection.
+- Add exportable traces for CPU, bus, interrupt, and device events.
+
+Tests:
+
+- Core decode/format APIs are covered by unit tests.
+- Debugger snapshot APIs expose all new inspector data without importing AppKit/SwiftUI into `IIGSCore`.
+- macOS app target builds.
+- CLI conformance tests remain the oracle for debugger command behavior.
 
 ## Definition of Done Per Phase
 
