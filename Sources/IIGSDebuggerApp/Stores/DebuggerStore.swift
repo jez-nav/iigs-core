@@ -1,9 +1,18 @@
+import AppKit
 import Foundation
 import IIGSCore
+
+enum DebuggerRunState: Equatable {
+    case paused
+    case running
+    case stopped(String)
+}
 
 @MainActor
 final class DebuggerStore: ObservableObject {
     @Published var snapshot: IIGSDebuggerSnapshot
+    @Published private(set) var runState: DebuggerRunState = .paused
+    @Published private(set) var videoFrame: IIGSVideoFrame
     @Published var memoryBank = "00"
     @Published var memoryRows: [IIGSDebuggerMemoryRow] = []
     @Published var memoryWriteAddress = "002000"
@@ -26,6 +35,7 @@ final class DebuggerStore: ObservableObject {
     @Published private(set) var hostMouseY: Int?
     @Published private(set) var displayMouseX: Int?
     @Published private(set) var displayMouseY: Int?
+    @Published private(set) var displayHasKeyboardFocus = false
 
     private let parser: IIGSDebuggerCommandParser
     private let session: IIGSDebuggerSession
@@ -33,11 +43,15 @@ final class DebuggerStore: ObservableObject {
     private var statsDate: Date
     private var statsCycleCount: UInt64
     private var uiFrameTicks = 0
+    private var lastDisplayMouseX: Int?
+    private var lastDisplayMouseY: Int?
+    private var lastMouseButtonDown = false
 
     init(session: IIGSDebuggerSession = IIGSDebuggerSession()) {
         self.parser = IIGSDebuggerCommandParser()
         self.session = session
         self.snapshot = session.snapshot()
+        self.videoFrame = session.renderVideoFrame()
         let now = Date()
         self.resetDate = now
         self.statsDate = now
@@ -75,20 +89,62 @@ final class DebuggerStore: ObservableObject {
     }
 
     func reset(_ kind: IIGSResetKind = .cold) {
+        pause()
         perform(.reset(kind))
         resetDate = Date()
         resetStatsWindow()
     }
 
     func step() {
+        pause()
         perform(.step(parsedPositiveInt(stepCount, defaultValue: 1)))
     }
 
     func run() {
-        perform(.run(parsedPositiveInt(runLimit, defaultValue: 1_000)))
+        startContinuousRun()
+    }
+
+    func startContinuousRun() {
+        if case .running = runState {
+            return
+        }
+        runState = .running
+        append("Running")
+    }
+
+    func pause() {
+        if case .running = runState {
+            append("Paused")
+        }
+        runState = .paused
+    }
+
+    func runContinuousTick(instructionBudget: Int = 2_000) {
+        guard case .running = runState else {
+            return
+        }
+
+        do {
+            let result = try session.runLiveBatch(instructionLimit: instructionBudget)
+            switch result.stopReason {
+            case .instructionLimitReached:
+                refreshLive()
+            case .breakpoint, .stopped, .waiting:
+                runState = .stopped(describe(result.stopReason))
+                append("Stopped: \(describe(result.stopReason)) PC=\(formatAddress(result.finalAddress))")
+                refreshAll()
+            case .cycleLimitReached:
+                refreshLive()
+            }
+        } catch {
+            runState = .stopped("error")
+            append(error, prefix: "Run failed")
+            refreshAll()
+        }
     }
 
     func runCycles() {
+        pause()
         perform(.runCycles(parsedPositiveInt(runLimit, defaultValue: 1_000)))
     }
 
@@ -179,9 +235,15 @@ final class DebuggerStore: ObservableObject {
 
     func refreshAll() {
         snapshot = session.snapshot()
+        videoFrame = session.renderVideoFrame()
         refreshMemoryRows()
         refreshDisassemblyRows()
         breakpoints = (try? session.execute(.listBreakpoints)) ?? "No breakpoints"
+    }
+
+    func refreshLive() {
+        snapshot = session.snapshot()
+        videoFrame = session.renderVideoFrame()
     }
 
     func noteUIRefresh() {
@@ -203,13 +265,24 @@ final class DebuggerStore: ObservableObject {
         uiFrameTicks = 0
     }
 
-    func updateHostMouse(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) {
-        let clampedX = min(max(0, x), max(0, width))
-        let clampedY = min(max(0, y), max(0, height))
-        hostMouseX = Int(clampedX.rounded())
-        hostMouseY = Int(clampedY.rounded())
-        displayMouseX = width > 0 ? Int((clampedX / width * 639).rounded()) : nil
-        displayMouseY = height > 0 ? Int((clampedY / height * 199).rounded()) : nil
+    func updateDisplayMouse(hostX: Int, hostY: Int, displayX: Int, displayY: Int, buttonDown: Bool) {
+        hostMouseX = hostX
+        hostMouseY = hostY
+        displayMouseX = displayX
+        displayMouseY = displayY
+
+        if let lastDisplayMouseX, let lastDisplayMouseY {
+            let dx = clampMouseDelta(displayX - lastDisplayMouseX)
+            let dy = clampMouseDelta(displayY - lastDisplayMouseY)
+            if dx != 0 || dy != 0 || buttonDown != lastMouseButtonDown {
+                session.moveMouse(dx: dx, dy: dy, buttonDown: buttonDown)
+                snapshot = session.snapshot()
+            }
+        }
+
+        lastDisplayMouseX = displayX
+        lastDisplayMouseY = displayY
+        lastMouseButtonDown = buttonDown
     }
 
     func clearHostMouse() {
@@ -217,6 +290,42 @@ final class DebuggerStore: ObservableObject {
         hostMouseY = nil
         displayMouseX = nil
         displayMouseY = nil
+        lastDisplayMouseX = nil
+        lastDisplayMouseY = nil
+        lastMouseButtonDown = false
+    }
+
+    func setDisplayFocus(_ focused: Bool) {
+        displayHasKeyboardFocus = focused
+    }
+
+    func handleKeyDown(characters: String, keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
+        if let ascii = appleIIASCII(from: characters, keyCode: keyCode) {
+            session.injectKeyboardInput(
+                ascii: ascii,
+                keyCode: UInt8(truncatingIfNeeded: keyCode),
+                modifiers: adbModifiers(from: modifiers),
+                isKeyUp: false
+            )
+        } else {
+            session.injectKeyboardInput(
+                ascii: nil,
+                keyCode: UInt8(truncatingIfNeeded: keyCode),
+                modifiers: adbModifiers(from: modifiers),
+                isKeyUp: false
+            )
+        }
+        snapshot = session.snapshot()
+    }
+
+    func handleKeyUp(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
+        session.injectKeyboardInput(
+            ascii: nil,
+            keyCode: UInt8(truncatingIfNeeded: keyCode),
+            modifiers: adbModifiers(from: modifiers),
+            isKeyUp: true
+        )
+        snapshot = session.snapshot()
     }
 
     private func perform(_ command: IIGSDebuggerCommand, shouldLog: Bool = true) {
@@ -255,6 +364,71 @@ final class DebuggerStore: ObservableObject {
         emulatorFPS = "0.00 fps"
         uiFPS = "0.00 fps"
         elapsedSinceReset = "00:00:00.0"
+    }
+
+    private func describe(_ reason: IIGSMachineStopReason) -> String {
+        switch reason {
+        case .instructionLimitReached:
+            return "instruction limit"
+        case .cycleLimitReached:
+            return "cycle limit"
+        case let .breakpoint(address):
+            return "breakpoint \(formatAddress(address))"
+        case .stopped:
+            return "stopped"
+        case .waiting:
+            return "waiting"
+        }
+    }
+
+    private func clampMouseDelta(_ value: Int) -> Int8 {
+        Int8(max(Int(Int8.min), min(Int(Int8.max), value)))
+    }
+
+    private func appleIIASCII(from characters: String, keyCode: UInt16) -> UInt8? {
+        switch keyCode {
+        case 36, 76:
+            return 0x0D
+        case 48:
+            return 0x09
+        case 51, 117:
+            return 0x7F
+        case 53:
+            return 0x1B
+        case 123:
+            return 0x08
+        case 124:
+            return 0x15
+        case 125:
+            return 0x0A
+        case 126:
+            return 0x0B
+        default:
+            guard let scalar = characters.unicodeScalars.first, scalar.value <= 0x7F else {
+                return nil
+            }
+            return UInt8(scalar.value)
+        }
+    }
+
+    private func adbModifiers(from flags: NSEvent.ModifierFlags) -> IIGSADBModifiers {
+        var modifiers: IIGSADBModifiers = []
+        if flags.contains(.shift) {
+            modifiers.insert(.shift)
+        }
+        if flags.contains(.control) {
+            modifiers.insert(.control)
+        }
+        if flags.contains(.option) {
+            modifiers.insert(.option)
+        }
+        if flags.contains(.command) {
+            modifiers.insert(.command)
+        }
+        if flags.contains(.capsLock) {
+            modifiers.insert(.capsLock)
+        }
+        return modifiers
     }
 
     private func append(_ line: String) {

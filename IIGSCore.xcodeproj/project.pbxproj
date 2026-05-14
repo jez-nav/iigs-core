@@ -63,6 +63,8 @@
 		1A000001000000000000003D /* DebuggerPhase19Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013C /* DebuggerPhase19Tests.swift */; };
 		1A000001000000000000003E /* DisassemblyPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013D /* DisassemblyPanel.swift */; };
 		1A000001000000000000003F /* InspectorPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013E /* InspectorPanel.swift */; };
+		1A0000010000000000000049 /* MachineDisplayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013F /* MachineDisplayPanel.swift */; };
+		1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000140 /* DebuggerPhase20Tests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -167,6 +169,8 @@
 		1A000001000000000000013C /* DebuggerPhase19Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase19Tests.swift; sourceTree = "<group>"; };
 		1A000001000000000000013D /* DisassemblyPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisassemblyPanel.swift; sourceTree = "<group>"; };
 		1A000001000000000000013E /* InspectorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorPanel.swift; sourceTree = "<group>"; };
+		1A000001000000000000013F /* MachineDisplayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDisplayPanel.swift; sourceTree = "<group>"; };
+		1A0000010000000000000140 /* DebuggerPhase20Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase20Tests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -379,6 +383,7 @@
 				1A0000010000000000000132 /* BreakpointPanel.swift */,
 				1A000001000000000000013D /* DisassemblyPanel.swift */,
 				1A000001000000000000013E /* InspectorPanel.swift */,
+				1A000001000000000000013F /* MachineDisplayPanel.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -411,6 +416,7 @@
 				1A0000010000000000000138 /* TimingPhase15Tests.swift */,
 				1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */,
 				1A000001000000000000013C /* DebuggerPhase19Tests.swift */,
+				1A0000010000000000000140 /* DebuggerPhase20Tests.swift */,
 			);
 			path = IIGSCoreTests;
 			sourceTree = "<group>";
@@ -598,6 +604,7 @@
 				1A0000010000000000000039 /* TimingPhase15Tests.swift in Sources */,
 				1A000001000000000000003B /* CoreCorrectnessPhase18Tests.swift in Sources */,
 				1A000001000000000000003D /* DebuggerPhase19Tests.swift in Sources */,
+				1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -622,6 +629,7 @@
 				1A000001000000000000002E /* BreakpointPanel.swift in Sources */,
 				1A000001000000000000003E /* DisassemblyPanel.swift in Sources */,
 				1A000001000000000000003F /* InspectorPanel.swift in Sources */,
+				1A0000010000000000000049 /* MachineDisplayPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

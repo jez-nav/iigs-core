@@ -379,6 +379,27 @@ public final class IIGSDebuggerSession {
         )
     }
 
+    public func renderVideoFrame() -> IIGSVideoFrame {
+        IIGSVideoRenderer.renderFrame(from: machine.memory)
+    }
+
+    public func injectKeyboardInput(ascii: UInt8?, keyCode: UInt8, modifiers: IIGSADBModifiers, isKeyUp: Bool) {
+        machine.memory.adbController.setModifiers(modifiers)
+        if !isKeyUp, let ascii {
+            machine.injectAppleIIKey(ascii, modifiers: modifiers)
+        }
+        machine.queueKeyboardEvent(keyCode: keyCode, isKeyUp: isKeyUp)
+    }
+
+    public func moveMouse(dx: Int8, dy: Int8, buttonDown: Bool) {
+        machine.moveMouse(dx: dx, dy: dy, buttonDown: buttonDown)
+    }
+
+    @discardableResult
+    public func runLiveBatch(instructionLimit: Int) throws -> IIGSMachineRunResult {
+        try machine.runUntilStop(instructionLimit: max(1, instructionLimit), breakpoints: breakpoints)
+    }
+
     @discardableResult
     public func execute(_ command: IIGSDebuggerCommand) throws -> String {
         switch command {

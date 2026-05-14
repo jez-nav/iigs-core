@@ -18,8 +18,8 @@ struct ContentView: View {
                     .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
 
                 VStack(spacing: 12) {
-                    DisplayProbePanel(store: store)
-                        .frame(height: 190)
+                    MachineDisplayPanel(store: store)
+                        .frame(minHeight: 220)
                     DisassemblyPanel(store: store)
                         .frame(minHeight: 210)
                     MemoryPanel(store: store)
@@ -40,6 +40,7 @@ struct ContentView: View {
             }
         }
         .onReceive(uiTimer) { _ in
+            store.runContinuousTick()
             store.noteUIRefresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: .debuggerStepRequested)) { _ in
@@ -76,6 +77,10 @@ struct ContentView: View {
 
             Spacer()
 
+            Text(runStateText)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+
             Button {
                 store.reset(.cold)
             } label: {
@@ -96,8 +101,26 @@ struct ContentView: View {
                 Label("Run", systemImage: "play.fill")
             }
             .help("Run")
+
+            Button {
+                store.pause()
+            } label: {
+                Label("Pause", systemImage: "pause.fill")
+            }
+            .help("Pause")
         }
         .controlSize(.regular)
+    }
+
+    private var runStateText: String {
+        switch store.runState {
+        case .paused:
+            return "Paused"
+        case .running:
+            return "Running"
+        case let .stopped(reason):
+            return "Stopped: \(reason)"
+        }
     }
 
     private func chooseROM() {

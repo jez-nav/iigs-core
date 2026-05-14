@@ -70,45 +70,6 @@ private struct MemoryRowView: View {
     }
 }
 
-struct DisplayProbePanel: View {
-    @ObservedObject var store: DebuggerStore
-
-    var body: some View {
-        GroupBox("Display Probe") {
-            GeometryReader { proxy in
-                ZStack {
-                    Rectangle()
-                        .fill(.black)
-                    VStack(spacing: 8) {
-                        Image(systemName: "cursorarrow.motionlines")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                        Text("Mouse probe")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .contentShape(Rectangle())
-                .onContinuousHover { phase in
-                    switch phase {
-                    case let .active(location):
-                        store.updateHostMouse(
-                            x: location.x,
-                            y: location.y,
-                            width: proxy.size.width,
-                            height: proxy.size.height
-                        )
-                    case .ended:
-                        store.clearHostMouse()
-                    }
-                }
-            }
-            .aspectRatio(640.0 / 200.0, contentMode: .fit)
-            .padding(.vertical, 4)
-        }
-    }
-}
-
 private func hex(_ value: UInt8, width: Int) -> String {
     hex(UInt32(value), width: width)
 }

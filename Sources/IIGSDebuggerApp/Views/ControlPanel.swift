@@ -41,6 +41,12 @@ struct ControlPanel: View {
                         }
 
                         Button {
+                            store.pause()
+                        } label: {
+                            Label("Pause", systemImage: "pause.fill")
+                        }
+
+                        Button {
                             store.runCycles()
                         } label: {
                             Label("Cycles", systemImage: "timer")

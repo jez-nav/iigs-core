@@ -25,6 +25,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 17: completed for debugger assertions, scriptable runtime state checks, scheduler event visibility, run-to-PC, raw/2IMG SmartPort image mounting commands, and CLI/runtime tests.
 - Phase 18: completed as a first core correctness pass for `$C023/$C032` interrupt state, scanline/one-second scheduler IRQ routing, deterministic paddle timer reads, and runtime harness coverage.
 - Phase 19: completed as a first debugger quality pass with core disassembly APIs, CLI disassembly/register editing, macOS disassembly and inspector panels, and tests.
+- Phase 20: completed as a first interactive debugger display/input pass with live video rendering, keyboard/mouse capture, ADB forwarding, and continuous run/pause controls.
 
 ## Phase 13 Audit Snapshot
 
@@ -521,6 +522,28 @@ Tests:
 - Debugger snapshot APIs expose all new inspector data without importing AppKit/SwiftUI into `IIGSCore`.
 - macOS app target builds.
 - CLI conformance tests remain the oracle for debugger command behavior.
+
+## Phase 20: Interactive Debugger Display And Input
+
+Goal: make the macOS debugger behave like a live machine surface while keeping `IIGSCore` platform-neutral.
+
+Status: completed as a first interactive slice. The macOS debugger now renders framework-owned video frames into an app-layer display surface, captures focused keyboard and mouse input, forwards key/mouse activity into Apple II compatibility and ADB paths, and runs continuously in bounded UI-friendly batches until paused, reset, stopped, waiting, errored, or a breakpoint is hit. Future passes can improve exact ADB keycode mapping, cursor capture/lock behavior, audio/video pacing, and richer display scaling controls.
+
+Implement:
+
+- Replace the display probe with a debugger display surface rendered from `IIGSVideoRenderer`.
+- Convert framework-owned `IIGSVideoFrame` buffers into host display images only in the macOS app layer.
+- Capture keyboard focus on the display surface and forward printable keys plus key up/down events into Apple II keyboard compatibility and ADB keyboard queues.
+- Capture mouse movement and button state over the display surface, map host coordinates into IIgs display coordinates, and forward deltas into ADB mouse state.
+- Add continuous run/pause behavior: run indefinitely in bounded UI-friendly batches until paused, reset, stopped, waiting, errored, or breakpoint hit.
+- Keep Step, Reset, Warm Reset, memory, disassembly, and inspector refresh behavior stable while paused or after each live-run batch.
+
+Tests:
+
+- Store-level tests cover continuous run state transitions and breakpoint pause behavior.
+- Store/input tests verify keyboard and mouse events reach core-visible ADB/Apple II state.
+- macOS app target builds.
+- Full macOS XCTest suite remains green.
 
 ## Definition of Done Per Phase
 
