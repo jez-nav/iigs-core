@@ -22,7 +22,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 14: completed for a separate macOS SwiftUI debugger app target built on `IIGSCore.framework`, with ROM/binary load, stepping/running, registers, memory dump, breakpoints, command log, shared scheme, and project-local run action.
 - Phase 15: completed for deterministic scheduler ownership, video cadence events, VBL interrupt routing, same-cycle ordering, CPU IRQ-line aggregation, speed-mode state, and initial paddle/DOC/disk event hooks.
 - Phase 16: completed for a full implementation-plan review and second gap map after Phases 14 and 15.
-- Phase 17: planned runtime conformance harness expansion using `IIGSDebuggerCLI` as a scriptable emulator test runner.
+- Phase 17: completed for debugger assertions, scriptable runtime state checks, scheduler event visibility, run-to-PC, raw/2IMG SmartPort image mounting commands, and CLI/runtime tests.
 - Phase 18: planned core correctness pass focused on the highest-risk boot and compatibility gaps found in Phase 16.
 - Phase 19: planned debugger quality pass after the conformance harness exposes the inspection workflows we actually need.
 
@@ -456,6 +456,8 @@ Tests:
 ## Phase 17: Runtime Conformance Harness Expansion
 
 Goal: make `IIGSDebuggerCLI` a stronger scriptable test runner for emulator runtime behavior.
+
+Status: completed as the first runtime conformance harness expansion. The CLI can now assert CPU/memory/flag/status/cycle state, print structured snapshots, inspect scheduler events, schedule device events, run until a PC, and mount raw/2IMG SmartPort block images. Future harness work can add disassembly, richer trace streams, floppy mounting commands, and deeper ROM checkpoint scripts.
 
 Implement:
 

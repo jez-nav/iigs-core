@@ -94,6 +94,18 @@ final class IIGSDebuggerCLI {
             }
             try loadBinary(path: parts[1], addressText: parts[2])
             return
+        case "mountraw":
+            guard parts.count >= 2 else {
+                throw IIGSDebuggerError.missingArgument("raw block image path")
+            }
+            try mountRawBlockDevice(path: parts[1], unitText: parts.dropFirst(2).first, readOnlyText: parts.dropFirst(3).first)
+            return
+        case "mount2img":
+            guard parts.count >= 2 else {
+                throw IIGSDebuggerError.missingArgument("2IMG path")
+            }
+            try mount2IMGBlockDevice(path: parts[1], unitText: parts.dropFirst(2).first)
+            return
         default:
             break
         }
@@ -121,6 +133,39 @@ final class IIGSDebuggerCLI {
         let bytes = Array(try readFile(path: path))
         session.loadBinary(bytes, at: address)
         print("Loaded \(bytes.count) byte(s) at \(formatAddress(address))")
+    }
+
+    private func mountRawBlockDevice(path: String, unitText: String?, readOnlyText: String?) throws {
+        let unit = try parseUnit(unitText)
+        let readOnly = try readOnlyText.map(parser.parseBool) ?? false
+        let device = try IIGSBlockDevice.raw(
+            bytes: Array(readFile(path: path)),
+            name: URL(fileURLWithPath: path).lastPathComponent,
+            isWriteProtected: readOnly
+        )
+        session.machine.mountSmartPortDevice(device, unit: unit)
+        print("Mounted raw block image unit=\(unit) blocks=\(device.blockCount) readOnly=\(readOnly ? 1 : 0)")
+    }
+
+    private func mount2IMGBlockDevice(path: String, unitText: String?) throws {
+        let unit = try parseUnit(unitText)
+        let device = try IIGSBlockDevice.twoIMG(
+            bytes: Array(readFile(path: path)),
+            name: URL(fileURLWithPath: path).lastPathComponent
+        )
+        session.machine.mountSmartPortDevice(device, unit: unit)
+        print("Mounted 2IMG block image unit=\(unit) blocks=\(device.blockCount) readOnly=\(device.isWriteProtected ? 1 : 0)")
+    }
+
+    private func parseUnit(_ text: String?) throws -> UInt8 {
+        guard let text else {
+            return 1
+        }
+        let value = try parser.parseByte(text)
+        guard (1...127).contains(value) else {
+            throw IIGSDebuggerError.invalidArgument(text)
+        }
+        return value
     }
 
     private func readFile(path: String) throws -> Data {
@@ -176,7 +221,7 @@ final class IIGSDebuggerCLI {
     Interactive commands:
       help, regs, step [count], run [limit], cycles <count>, bp <addr>, bc <addr>, bl,
       mem <addr> [count], set <addr> <byte>, reset [cold|warm], loadrom <path>,
-      loadbin <path> <addr>, quit
+      loadbin <path> <addr>, mountraw <path> [unit] [readOnly], mount2img <path> [unit], quit
     """
 }
 

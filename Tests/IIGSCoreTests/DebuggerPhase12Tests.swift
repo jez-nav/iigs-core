@@ -14,6 +14,16 @@ final class DebuggerPhase12Tests: XCTestCase {
         XCTAssertEqual(try parser.parse("mem $E1:2000 4"), .readMemory(0xE12000, 4))
         XCTAssertEqual(try parser.parse("set C030 FF"), .writeMemory(0x00C030, 0xFF))
         XCTAssertEqual(try parser.parse("reset warm"), .reset(.warm))
+        XCTAssertEqual(try parser.parse("snapshot"), .snapshot)
+        XCTAssertEqual(try parser.parse("events"), .events)
+        XCTAssertEqual(try parser.parse("schedule paddle 20 2"), .scheduleEvent(.paddleTimeout, 20, 2))
+        XCTAssertEqual(try parser.parse("runpc 008010 100"), .runUntilPC(0x008010, 100))
+        XCTAssertEqual(try parser.parse("assert pc 008000"), .assertion(.programCounter(0x008000)))
+        XCTAssertEqual(try parser.parse("assert reg A 42"), .assertion(.register("A", 0x42)))
+        XCTAssertEqual(try parser.parse("assert flag Z 1"), .assertion(.flag("Z", true)))
+        XCTAssertEqual(try parser.parse("assert status irq 0"), .assertion(.status("irq", false)))
+        XCTAssertEqual(try parser.parse("assert mem 2000 5A"), .assertion(.memory(0x002000, 0x5A)))
+        XCTAssertEqual(try parser.parse("assert cycles >= 10"), .assertion(.cycles(.greaterThanOrEqual, 10)))
         XCTAssertEqual(try parser.parse("quit"), .quit)
         XCTAssertNil(try parser.parse(""))
     }
@@ -80,6 +90,46 @@ final class DebuggerPhase12Tests: XCTestCase {
         XCTAssertTrue(output.contains("Stopped: cycle limit"))
         XCTAssertTrue(output.contains("PC=$008002"))
         XCTAssertTrue(try session.execute(.help).contains("Commands:"))
+    }
+
+    func testSessionPhase17AssertionsSnapshotAndEvents() throws {
+        let session = IIGSDebuggerSession(machine: IIGSMachine(romImage: try makeROM(resetVector: 0x8000)))
+        session.loadBinary([
+            0xA9, 0x00,       // LDA #$00
+            0x8D, 0x00, 0x20, // STA $2000
+            0xCB              // WAI
+        ], at: 0x008000)
+
+        _ = try session.execute(.reset(.cold))
+        _ = try session.execute(.step(2))
+
+        XCTAssertEqual(try session.execute(.assertion(.programCounter(0x008005))), "ASSERT OK pc $008005")
+        XCTAssertEqual(try session.execute(.assertion(.register("A", 0x0000))), "ASSERT OK reg A $0000")
+        XCTAssertEqual(try session.execute(.assertion(.flag("Z", true))), "ASSERT OK flag Z 1")
+        XCTAssertEqual(try session.execute(.assertion(.memory(0x002000, 0x00))), "ASSERT OK mem $002000 $00")
+        XCTAssertNoThrow(try session.execute(.assertion(.cycles(.greaterThanOrEqual, 1))))
+
+        let snapshot = try session.execute(.snapshot)
+        XCTAssertTrue(snapshot.contains("flags=N0"))
+        XCTAssertTrue(snapshot.contains("status=RDY1"))
+        XCTAssertTrue(snapshot.contains("timing=cycles:"))
+
+        XCTAssertEqual(
+            try session.execute(.scheduleEvent(.paddleTimeout, 3, 2)),
+            "Scheduled paddleTimeout after 3 cycle(s) payload=000002"
+        )
+        session.machine.advanceCycles(3)
+        XCTAssertTrue(try session.execute(.events).contains("serviced"))
+        XCTAssertTrue(try session.execute(.events).contains("paddleTimeout"))
+    }
+
+    func testSessionPhase17AssertionFailureIsUseful() throws {
+        let session = IIGSDebuggerSession(machine: IIGSMachine(romImage: try makeROM(resetVector: 0x8000)))
+        _ = try session.execute(.reset(.cold))
+
+        XCTAssertThrowsError(try session.execute(.assertion(.programCounter(0x008001)))) { error in
+            XCTAssertEqual(error as? IIGSDebuggerError, .assertionFailed("PC expected $008001 got $008000"))
+        }
     }
 
     private func makeROM(resetVector: UInt16) throws -> IIGSROMImage {
