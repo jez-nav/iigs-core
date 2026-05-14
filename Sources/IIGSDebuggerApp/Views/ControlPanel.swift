@@ -1,0 +1,86 @@
+import SwiftUI
+
+struct ControlPanel: View {
+    @ObservedObject var store: DebuggerStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            GroupBox("Execution") {
+                VStack(alignment: .leading, spacing: 10) {
+                    LabeledContent("Step") {
+                        TextField("1", text: $store.stepCount)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 72)
+                    }
+
+                    HStack {
+                        Button {
+                            store.step()
+                        } label: {
+                            Label("Step", systemImage: "forward.frame")
+                        }
+
+                        Button {
+                            store.reset(.warm)
+                        } label: {
+                            Label("Warm", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+
+                    LabeledContent("Run") {
+                        TextField("1000", text: $store.runLimit)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 92)
+                    }
+
+                    HStack {
+                        Button {
+                            store.run()
+                        } label: {
+                            Label("Run", systemImage: "play.fill")
+                        }
+
+                        Button {
+                            store.runCycles()
+                        } label: {
+                            Label("Cycles", systemImage: "timer")
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            GroupBox("Binary") {
+                LabeledContent("Address") {
+                    TextField("008000", text: $store.binaryLoadAddress)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 92)
+                        .monospaced()
+                }
+                .padding(.vertical, 4)
+            }
+
+            GroupBox("Command") {
+                HStack {
+                    TextField("regs", text: $store.commandText)
+                        .textFieldStyle(.roundedBorder)
+                        .monospaced()
+                        .onSubmit {
+                            store.runCommand()
+                        }
+
+                    Button {
+                        store.runCommand()
+                    } label: {
+                        Image(systemName: "return")
+                    }
+                    .help("Run command")
+                }
+                .padding(.vertical, 4)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+    }
+}
