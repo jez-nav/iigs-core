@@ -8,8 +8,12 @@ public final class CPU65816 {
     public private(set) var registers = CPURegisters()
     public private(set) var isStopped = false
     public private(set) var isWaiting = false
+    public var isIRQPending: Bool { irqPending || irqLineAsserted }
+    public var isNMIPending: Bool { nmiPending }
+    public var isAbortPending: Bool { abortPending }
 
     private var irqPending = false
+    private var irqLineAsserted = false
     private var nmiPending = false
     private var abortPending = false
 
@@ -20,6 +24,7 @@ public final class CPU65816 {
         isStopped = false
         isWaiting = false
         irqPending = false
+        irqLineAsserted = false
         nmiPending = false
         abortPending = false
         let low = UInt16(bus.read8(at: 0x00FFFC))
@@ -48,6 +53,13 @@ public final class CPU65816 {
         }
     }
 
+    public func setIRQLine(_ asserted: Bool) {
+        irqLineAsserted = asserted
+        if asserted && isWaiting {
+            isWaiting = false
+        }
+    }
+
     @discardableResult
     public func step(using bus: IIGSBus) throws -> Int {
         guard !isStopped else {
@@ -70,7 +82,7 @@ public final class CPU65816 {
             return enterInterrupt(.nmi, using: bus)
         }
 
-        if irqPending && !registers.status.contains(.interruptDisable) {
+        if (irqPending || irqLineAsserted) && !registers.status.contains(.interruptDisable) {
             irqPending = false
             return enterInterrupt(.irq, using: bus)
         }

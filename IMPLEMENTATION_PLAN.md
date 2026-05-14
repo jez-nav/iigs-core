@@ -19,8 +19,8 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 11: completed for ROM load/reset entry points, deterministic step/run results, breakpoint and cycle-budget stops, no-media smoke coverage, and storage mount API coverage.
 - Phase 12: completed for debugger command parsing/session APIs, register/memory/step/run/breakpoint commands, binary loading, and the standalone `IIGSDebuggerCLI` target.
 - Phase 13: completed for first-pass spec audit, CLI runtime tests, script-based command execution, ROM01 CLI smoke coverage, and subsystem status marking.
-- Phase 14: proposed follow-up phase for a separate macOS debugger app built on `IIGSCore.framework`.
-- Phase 15: proposed follow-up phase to revisit timing and event scheduling as the weakest core subsystem identified by Phase 13.
+- Phase 14: completed for a separate macOS SwiftUI debugger app target built on `IIGSCore.framework`, with ROM/binary load, stepping/running, registers, memory dump, breakpoints, command log, shared scheme, and project-local run action.
+- Phase 15: completed for deterministic scheduler ownership, video cadence events, VBL interrupt routing, same-cycle ordering, CPU IRQ-line aggregation, speed-mode state, and initial paddle/DOC/disk event hooks.
 
 ## Phase 13 Audit Snapshot
 
@@ -336,29 +336,38 @@ Tests:
 - ROM01 reset reports the expected PC when `LocalAssets/ROMs/Apple_IIGS_ROM01.bin` is present.
 - Existing macOS XCTest suite and generic iOS framework build continue to pass.
 
-## Phase 14: macOS Debugger App MVP
+## Phase 14: macOS Debugger App MVP and Inspector Expansion
 
-Goal: add a basic native debugger host without putting presentation code into `IIGSCore.framework`.
+Goal: add a basic native debugger host, then expand it into a useful inspection surface without putting presentation code into `IIGSCore.framework`.
 
 Implement:
 
 - Add a separate macOS app target, likely `IIGSDebugger`.
 - Use `IIGSDebuggerSession` as the app-facing debugging model.
+- Add structured debugger snapshot APIs for registers, flags, status lines, counters, input state, and memory rows.
 - ROM load flow.
 - Binary load flow.
-- Register panel.
-- Memory viewer with address entry and refresh.
+- Register panel with fixed fields for `PC`, `PBR`, `S`, `D`, `DBR`, `A`, `X`, and `Y`.
+- Flag panel for `N`, `V`, `M`, `X`, `D`, `I`, `Z`, and `C`.
+- Status panel for `RDY`, `IRQ`, `NMI`, `E`, stopped, and waiting state where available.
+- Runtime counter panel for emulated cycles, approximate emulator refresh cadence, approximate UI refresh cadence, and elapsed time since reset/power.
+- Mouse panel showing host coordinates over the debugger display area and ROM-visible mouse coordinates.
+- Banked memory viewer with bank entry `00...FF`, rows showing full 24-bit address, 16 bytes, and printable ASCII.
+- Memory viewer scrolling through offsets `$0000...$FFFF`; bank `$FF` should end on row `FFFFF0`.
 - Step button.
 - Run-until-breakpoint button.
 - Breakpoint add/remove/list UI.
 - Output/log pane showing debugger command results.
 - Optional command input field that accepts the same commands as the CLI.
+- Pause/snapshot behavior so register and memory panels can hold a stable state while execution is stopped.
 
 Tests:
 
 - macOS app target builds.
 - Core debugger APIs remain covered by unit tests.
 - CLI runtime tests remain the end-to-end command oracle.
+- Banked memory row formatting, printable ASCII fallback, bank bounds, and final-row address math.
+- Structured debugger snapshots report CPU registers, flags, status, cycle counters, and ADB mouse state.
 - Minimal UI smoke tests can be added once the app has stable controls.
 
 Boundary:
@@ -369,6 +378,8 @@ Boundary:
 ## Phase 15: Timing/Event Scheduler Revisit
 
 Goal: replace the partial timing work with one coherent emulated time base shared by CPU, video, input, sound, storage, and interrupts.
+
+Status: completed as a scheduler foundation. Detailed scanline IRQ register semantics, fully analog paddle timing, DOC oscillator rescheduling, disk rotational timing, SCC events, and clock events remain future hardening work.
 
 Implement:
 

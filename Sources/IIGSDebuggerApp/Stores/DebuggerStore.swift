@@ -3,10 +3,9 @@ import IIGSCore
 
 @MainActor
 final class DebuggerStore: ObservableObject {
-    @Published var registers: String
-    @Published var memoryAddress = "000000"
-    @Published var memoryCount = "16"
-    @Published var memoryDump = ""
+    @Published var snapshot: IIGSDebuggerSnapshot
+    @Published var memoryBank = "00"
+    @Published var memoryRows: [IIGSDebuggerMemoryRow] = []
     @Published var binaryLoadAddress = "008000"
     @Published var stepCount = "1"
     @Published var runLimit = "1000"
@@ -14,13 +13,30 @@ final class DebuggerStore: ObservableObject {
     @Published var breakpoints = "No breakpoints"
     @Published var commandText = ""
     @Published private(set) var logText = ""
+    @Published private(set) var emulatorFPS = "0.00 fps"
+    @Published private(set) var uiFPS = "0.00 fps"
+    @Published private(set) var elapsedSinceReset = "00:00:00.0"
+    @Published private(set) var hostMouseX: Int?
+    @Published private(set) var hostMouseY: Int?
+    @Published private(set) var displayMouseX: Int?
+    @Published private(set) var displayMouseY: Int?
 
-    private let parser = IIGSDebuggerCommandParser()
-    private let session = IIGSDebuggerSession()
+    private let parser: IIGSDebuggerCommandParser
+    private let session: IIGSDebuggerSession
+    private var resetDate: Date
+    private var statsDate: Date
+    private var statsCycleCount: UInt64
+    private var uiFrameTicks = 0
 
-    init() {
-        self.registers = session.formatRegisters()
-        refreshMemory()
+    init(session: IIGSDebuggerSession = IIGSDebuggerSession()) {
+        self.parser = IIGSDebuggerCommandParser()
+        self.session = session
+        self.snapshot = session.snapshot()
+        let now = Date()
+        self.resetDate = now
+        self.statsDate = now
+        self.statsCycleCount = session.snapshot().timing.cycles
+        refreshMemoryRows()
         append("IIGSDebugger ready")
     }
 
@@ -29,6 +45,8 @@ final class DebuggerStore: ObservableObject {
             let bytes = try Data(contentsOf: url)
             try session.loadROM(bytes: Array(bytes))
             let output = try session.execute(.reset(.cold))
+            resetDate = Date()
+            resetStatsWindow()
             append("Loaded ROM \(url.lastPathComponent)")
             append(output)
             refreshAll()
@@ -51,6 +69,8 @@ final class DebuggerStore: ObservableObject {
 
     func reset(_ kind: IIGSResetKind = .cold) {
         perform(.reset(kind))
+        resetDate = Date()
+        resetStatsWindow()
     }
 
     func step() {
@@ -89,14 +109,19 @@ final class DebuggerStore: ObservableObject {
         refreshAll()
     }
 
-    func refreshMemory() {
-        do {
-            let address = try parser.parseAddress(memoryAddress)
-            let count = parsedPositiveInt(memoryCount, defaultValue: 16)
-            memoryDump = try session.execute(.readMemory(address, count))
-        } catch {
-            memoryDump = "Memory read failed: \(describe(error))"
+    func refreshMemoryRows() {
+        guard let bank = parseBank(memoryBank) else {
+            return
         }
+        memoryRows = session.memoryRows(bank: bank, startOffset: 0, rowCount: 0x10000 / IIGSDebuggerMemoryRow.bytesPerRow)
+    }
+
+    func updateMemoryBank() {
+        guard let bank = parseBank(memoryBank) else {
+            return
+        }
+        memoryBank = String(formatHex: UInt32(bank), width: 2)
+        refreshMemoryRows()
     }
 
     func runCommand() {
@@ -117,9 +142,44 @@ final class DebuggerStore: ObservableObject {
     }
 
     func refreshAll() {
-        registers = session.formatRegisters()
-        refreshMemory()
+        snapshot = session.snapshot()
+        refreshMemoryRows()
         breakpoints = (try? session.execute(.listBreakpoints)) ?? "No breakpoints"
+    }
+
+    func noteUIRefresh() {
+        uiFrameTicks += 1
+        let now = Date()
+        let elapsed = now.timeIntervalSince(statsDate)
+        elapsedSinceReset = Self.formatElapsed(now.timeIntervalSince(resetDate))
+        guard elapsed >= 1 else {
+            return
+        }
+
+        snapshot = session.snapshot()
+        let cycleDelta = snapshot.timing.cycles - statsCycleCount
+        let emulatedFrames = Double(cycleDelta) / Double(IIGSVideoTiming.cyclesPerFrame)
+        emulatorFPS = String(format: "%.2f fps", emulatedFrames / elapsed)
+        uiFPS = String(format: "%.2f fps", Double(uiFrameTicks) / elapsed)
+        statsDate = now
+        statsCycleCount = snapshot.timing.cycles
+        uiFrameTicks = 0
+    }
+
+    func updateHostMouse(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat) {
+        let clampedX = min(max(0, x), max(0, width))
+        let clampedY = min(max(0, y), max(0, height))
+        hostMouseX = Int(clampedX.rounded())
+        hostMouseY = Int(clampedY.rounded())
+        displayMouseX = width > 0 ? Int((clampedX / width * 639).rounded()) : nil
+        displayMouseY = height > 0 ? Int((clampedY / height * 199).rounded()) : nil
+    }
+
+    func clearHostMouse() {
+        hostMouseX = nil
+        hostMouseY = nil
+        displayMouseX = nil
+        displayMouseY = nil
     }
 
     private func perform(_ command: IIGSDebuggerCommand, shouldLog: Bool = true) {
@@ -140,6 +200,24 @@ final class DebuggerStore: ObservableObject {
             return defaultValue
         }
         return value
+    }
+
+    private func parseBank(_ text: String) -> UInt8? {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+            .replacingOccurrences(of: "$", with: "")
+            .replacingOccurrences(of: "0X", with: "")
+        return UInt8(value, radix: 16)
+    }
+
+    private func resetStatsWindow() {
+        let now = Date()
+        statsDate = now
+        statsCycleCount = session.snapshot().timing.cycles
+        uiFrameTicks = 0
+        emulatorFPS = "0.00 fps"
+        uiFPS = "0.00 fps"
+        elapsedSinceReset = "00:00:00.0"
     }
 
     private func append(_ line: String) {
@@ -168,7 +246,22 @@ final class DebuggerStore: ObservableObject {
     }
 
     private func formatAddress(_ address: UInt32) -> String {
-        let text = String(address & 0x00FF_FFFF, radix: 16, uppercase: true)
-        return "$" + String(repeating: "0", count: Swift.max(0, 6 - text.count)) + text
+        "$" + String(formatHex: address & 0x00FF_FFFF, width: 6)
+    }
+
+    private static func formatElapsed(_ interval: TimeInterval) -> String {
+        let tenths = Int((interval * 10).rounded(.down))
+        let hours = tenths / 36_000
+        let minutes = (tenths / 600) % 60
+        let seconds = (tenths / 10) % 60
+        let fraction = tenths % 10
+        return String(format: "%02d:%02d:%02d.%d", hours, minutes, seconds, fraction)
+    }
+}
+
+private extension String {
+    init(formatHex value: UInt32, width: Int) {
+        let text = String(value, radix: 16, uppercase: true)
+        self = String(repeating: "0", count: Swift.max(0, width - text.count)) + text
     }
 }

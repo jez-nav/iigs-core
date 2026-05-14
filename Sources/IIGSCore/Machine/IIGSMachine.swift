@@ -24,18 +24,28 @@ public struct IIGSMachineRunResult: Equatable, Sendable {
     public let finalAddress: UInt32
 }
 
+public enum IIGSCPUSpeedMode: Equatable, Sendable {
+    case slow
+    case fast
+}
+
 public final class IIGSMachine {
     public let memory: FlatMemoryBus
     public let cpu: CPU65816
+    public let scheduler: IIGSEventScheduler
     public let smartPortController = IIGSSmartPortController()
     public private(set) var lastResetKind: IIGSResetKind?
+    public private(set) var servicedDeviceEvents: [IIGSFiredEvent] = []
 
     public init(memorySize: Int = FlatMemoryBus.fullAddressSpaceSize, romImage: IIGSROMImage? = nil) {
-        self.memory = FlatMemoryBus(size: memorySize)
+        let scheduler = IIGSEventScheduler()
+        self.scheduler = scheduler
+        self.memory = FlatMemoryBus(size: memorySize, scheduler: scheduler)
         self.cpu = CPU65816()
         if let romImage {
             memory.installROM(romImage)
         }
+        scheduleVideoEvents()
     }
 
     public func installROM(_ romImage: IIGSROMImage) {
@@ -49,6 +59,7 @@ public final class IIGSMachine {
     public func reset(_ kind: IIGSResetKind = .cold) {
         lastResetKind = kind
         cpu.reset(using: memory)
+        serviceScheduledEvents()
     }
 
     public var currentProgramAddress: UInt32 {
@@ -71,6 +82,33 @@ public final class IIGSMachine {
         memory.adbController.moveMouse(dx: dx, dy: dy, buttonDown: buttonDown)
     }
 
+    public var cpuSpeedMode: IIGSCPUSpeedMode {
+        memory.cpuSpeedMode
+    }
+
+    public func schedulePaddleTimeout(paddle: UInt8, afterCycles cycles: UInt64) {
+        scheduler.schedule(kind: .paddleTimeout, at: memory.cycleCount &+ cycles, payload: UInt32(paddle))
+    }
+
+    public func scheduleDOCEvent(oscillator: UInt8, afterCycles cycles: UInt64) {
+        scheduler.schedule(kind: .docOscillator, at: memory.cycleCount &+ cycles, payload: UInt32(oscillator))
+    }
+
+    public func scheduleDiskEvent(drive: UInt8, afterCycles cycles: UInt64) {
+        scheduler.schedule(kind: .disk, at: memory.cycleCount &+ cycles, payload: UInt32(drive))
+    }
+
+    public func drainServicedDeviceEvents() -> [IIGSFiredEvent] {
+        let events = servicedDeviceEvents
+        servicedDeviceEvents.removeAll(keepingCapacity: true)
+        return events
+    }
+
+    public func advanceCycles(_ cycles: Int) {
+        memory.idle(cycles: cycles)
+        serviceScheduledEvents()
+    }
+
     public func mountSmartPortDevice(_ device: IIGSBlockDevice, unit: UInt8 = 1) {
         smartPortController.mount(device, unit: unit)
     }
@@ -91,7 +129,10 @@ public final class IIGSMachine {
 
     @discardableResult
     public func step() throws -> Int {
-        try cpu.step(using: memory)
+        refreshIRQLine()
+        let cycles = try cpu.step(using: memory)
+        serviceScheduledEvents()
+        return cycles
     }
 
     @discardableResult
@@ -196,5 +237,46 @@ public final class IIGSMachine {
             stopReason: stopReason,
             finalAddress: currentProgramAddress
         )
+    }
+
+    private func scheduleVideoEvents() {
+        scheduler.schedule(
+            kind: .videoScanline,
+            at: UInt64(IIGSVideoTiming.cyclesPerLine),
+            repeatingEvery: UInt64(IIGSVideoTiming.cyclesPerLine)
+        )
+        scheduler.schedule(
+            kind: .verticalBlankStart,
+            at: UInt64(IIGSVideoTiming.classicVisibleLines * IIGSVideoTiming.cyclesPerLine),
+            repeatingEvery: UInt64(IIGSVideoTiming.cyclesPerFrame)
+        )
+        scheduler.schedule(
+            kind: .verticalBlankEnd,
+            at: UInt64(IIGSVideoTiming.cyclesPerFrame),
+            repeatingEvery: UInt64(IIGSVideoTiming.cyclesPerFrame)
+        )
+        scheduler.schedule(
+            kind: .videoFrame,
+            at: UInt64(IIGSVideoTiming.cyclesPerFrame),
+            repeatingEvery: UInt64(IIGSVideoTiming.cyclesPerFrame)
+        )
+    }
+
+    private func serviceScheduledEvents() {
+        for event in scheduler.drainFiredEvents() {
+            switch event.kind {
+            case .verticalBlankStart:
+                memory.setVerticalBlankInterruptPending()
+            case .paddleTimeout, .docOscillator, .disk, .scc, .clockTick, .custom:
+                servicedDeviceEvents.append(event)
+            case .videoScanline, .verticalBlankEnd, .videoFrame:
+                break
+            }
+        }
+        refreshIRQLine()
+    }
+
+    private func refreshIRQLine() {
+        cpu.setIRQLine(memory.irqLineAsserted)
     }
 }

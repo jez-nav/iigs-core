@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = DebuggerStore()
+    private let uiTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,19 +18,26 @@ struct ContentView: View {
                     .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
 
                 VStack(spacing: 12) {
-                    RegisterPanel(registers: store.registers)
+                    DisplayProbePanel(store: store)
+                        .frame(height: 190)
                     MemoryPanel(store: store)
                 }
                 .padding(12)
-                .frame(minWidth: 360)
+                .frame(minWidth: 560)
 
                 VStack(spacing: 12) {
+                    RegisterPanel(snapshot: store.snapshot)
+                    TimingPanel(store: store)
+                    MousePanel(store: store, mouse: store.snapshot.mouse)
                     BreakpointPanel(store: store)
                     LogPanel(logText: store.logText)
                 }
                 .padding(12)
                 .frame(minWidth: 300, idealWidth: 360)
             }
+        }
+        .onReceive(uiTimer) { _ in
+            store.noteUIRefresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: .debuggerStepRequested)) { _ in
             store.step()

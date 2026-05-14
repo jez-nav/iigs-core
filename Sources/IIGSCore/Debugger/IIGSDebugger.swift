@@ -184,6 +184,23 @@ public final class IIGSDebuggerSession {
         machine.memory.load(bytes, at: masked24(address))
     }
 
+    public func snapshot() -> IIGSDebuggerSnapshot {
+        IIGSDebuggerSnapshot(machine: machine)
+    }
+
+    public func memoryRows(bank: UInt8, startOffset: UInt16, rowCount: Int) -> [IIGSDebuggerMemoryRow] {
+        let count = max(0, rowCount)
+        let firstOffset = startOffset & 0xFFF0
+        return (0..<count).map { rowIndex in
+            let offset = UInt16(truncatingIfNeeded: UInt32(firstOffset) &+ UInt32(rowIndex * IIGSDebuggerMemoryRow.bytesPerRow))
+            let address = (UInt32(bank) << 16) | UInt32(offset)
+            let bytes = (0..<IIGSDebuggerMemoryRow.bytesPerRow).map { byteIndex in
+                machine.memory.debugRead8(at: address &+ UInt32(byteIndex))
+            }
+            return IIGSDebuggerMemoryRow(bank: bank, offset: offset, bytes: bytes)
+        }
+    }
+
     @discardableResult
     public func execute(_ command: IIGSDebuggerCommand) throws -> String {
         switch command {

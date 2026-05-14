@@ -43,6 +43,20 @@
 		1A0000010000000000000025 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000129 /* main.swift */; };
 		1A0000010000000000000026 /* IIGSCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; };
 		1A0000010000000000000027 /* Phase13CLIRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000012B /* Phase13CLIRuntimeTests.swift */; };
+		1A0000010000000000000028 /* IIGSDebuggerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000012C /* IIGSDebuggerApp.swift */; };
+		1A0000010000000000000029 /* DebuggerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000012D /* DebuggerStore.swift */; };
+		1A000001000000000000002A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000012E /* ContentView.swift */; };
+		1A000001000000000000002B /* ControlPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000012F /* ControlPanel.swift */; };
+		1A000001000000000000002C /* RegisterPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000130 /* RegisterPanel.swift */; };
+		1A000001000000000000002D /* MemoryPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000131 /* MemoryPanel.swift */; };
+		1A000001000000000000002E /* BreakpointPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000132 /* BreakpointPanel.swift */; };
+		1A000001000000000000002F /* IIGSCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; };
+		1A0000010000000000000034 /* IIGSCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1A0000010000000000000035 /* IIGSDebuggerSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000134 /* IIGSDebuggerSnapshot.swift */; };
+		1A0000010000000000000036 /* DebuggerPhase14Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000135 /* DebuggerPhase14Tests.swift */; };
+		1A0000010000000000000037 /* IIGSEventScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000136 /* IIGSEventScheduler.swift */; };
+		1A0000010000000000000038 /* IIGSInterruptState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000137 /* IIGSInterruptState.swift */; };
+		1A0000010000000000000039 /* TimingPhase15Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000138 /* TimingPhase15Tests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,7 +81,28 @@
 			remoteGlobalIDString = 1A0000010000000000000032;
 			remoteInfo = IIGSDebuggerCLI;
 		};
+		1A00000100000000000000C5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A0000010000000000000020 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1A0000010000000000000030;
+			remoteInfo = IIGSCore;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1A0000010000000000000048 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				1A0000010000000000000034 /* IIGSCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1A0000010000000000000101 /* IIGSBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSBus.swift; sourceTree = "<group>"; };
@@ -107,6 +142,19 @@
 		1A0000010000000000000129 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		1A000001000000000000012A /* IIGSDebuggerCLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = IIGSDebuggerCLI; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A000001000000000000012B /* Phase13CLIRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase13CLIRuntimeTests.swift; sourceTree = "<group>"; };
+		1A000001000000000000012C /* IIGSDebuggerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSDebuggerApp.swift; sourceTree = "<group>"; };
+		1A000001000000000000012D /* DebuggerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerStore.swift; sourceTree = "<group>"; };
+		1A000001000000000000012E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1A000001000000000000012F /* ControlPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPanel.swift; sourceTree = "<group>"; };
+		1A0000010000000000000130 /* RegisterPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterPanel.swift; sourceTree = "<group>"; };
+		1A0000010000000000000131 /* MemoryPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryPanel.swift; sourceTree = "<group>"; };
+		1A0000010000000000000132 /* BreakpointPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakpointPanel.swift; sourceTree = "<group>"; };
+		1A0000010000000000000133 /* IIGSDebugger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IIGSDebugger.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A0000010000000000000134 /* IIGSDebuggerSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSDebuggerSnapshot.swift; sourceTree = "<group>"; };
+		1A0000010000000000000135 /* DebuggerPhase14Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase14Tests.swift; sourceTree = "<group>"; };
+		1A0000010000000000000136 /* IIGSEventScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSEventScheduler.swift; sourceTree = "<group>"; };
+		1A0000010000000000000137 /* IIGSInterruptState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSInterruptState.swift; sourceTree = "<group>"; };
+		1A0000010000000000000138 /* TimingPhase15Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingPhase15Tests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -133,6 +181,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1A0000010000000000000047 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A000001000000000000002F /* IIGSCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -150,6 +206,7 @@
 			children = (
 				1A0000010000000000000052 /* IIGSCore */,
 				1A000001000000000000005F /* IIGSDebuggerCLI */,
+				1A00000100000000000000D0 /* IIGSDebuggerApp */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -164,6 +221,7 @@
 				1A000001000000000000005D /* Audio */,
 				1A000001000000000000005B /* Input */,
 				1A000001000000000000005C /* Storage */,
+				1A00000100000000000000E0 /* Timing */,
 				1A000001000000000000005E /* Debugger */,
 				1A0000010000000000000056 /* Machine */,
 				1A0000010000000000000108 /* IIGSCore.swift */,
@@ -208,6 +266,15 @@
 			path = Machine;
 			sourceTree = "<group>";
 		};
+		1A00000100000000000000E0 /* Timing */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000010000000000000136 /* IIGSEventScheduler.swift */,
+				1A0000010000000000000137 /* IIGSInterruptState.swift */,
+			);
+			path = Timing;
+			sourceTree = "<group>";
+		};
 		1A000001000000000000005A /* Video */ = {
 			isa = PBXGroup;
 			children = (
@@ -249,6 +316,7 @@
 			isa = PBXGroup;
 			children = (
 				1A0000010000000000000127 /* IIGSDebugger.swift */,
+				1A0000010000000000000134 /* IIGSDebuggerSnapshot.swift */,
 			);
 			path = Debugger;
 			sourceTree = "<group>";
@@ -259,6 +327,44 @@
 				1A0000010000000000000129 /* main.swift */,
 			);
 			path = IIGSDebuggerCLI;
+			sourceTree = "<group>";
+		};
+		1A00000100000000000000D0 /* IIGSDebuggerApp */ = {
+			isa = PBXGroup;
+			children = (
+				1A00000100000000000000D1 /* App */,
+				1A00000100000000000000D2 /* Stores */,
+				1A00000100000000000000D3 /* Views */,
+			);
+			path = IIGSDebuggerApp;
+			sourceTree = "<group>";
+		};
+		1A00000100000000000000D1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1A000001000000000000012C /* IIGSDebuggerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		1A00000100000000000000D2 /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				1A000001000000000000012D /* DebuggerStore.swift */,
+			);
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		1A00000100000000000000D3 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1A000001000000000000012E /* ContentView.swift */,
+				1A000001000000000000012F /* ControlPanel.swift */,
+				1A0000010000000000000130 /* RegisterPanel.swift */,
+				1A0000010000000000000131 /* MemoryPanel.swift */,
+				1A0000010000000000000132 /* BreakpointPanel.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		1A0000010000000000000058 /* Tests */ = {
@@ -285,6 +391,8 @@
 				1A0000010000000000000126 /* MachinePhase11Tests.swift */,
 				1A0000010000000000000128 /* DebuggerPhase12Tests.swift */,
 				1A000001000000000000012B /* Phase13CLIRuntimeTests.swift */,
+				1A0000010000000000000135 /* DebuggerPhase14Tests.swift */,
+				1A0000010000000000000138 /* TimingPhase15Tests.swift */,
 			);
 			path = IIGSCoreTests;
 			sourceTree = "<group>";
@@ -295,6 +403,7 @@
 				1A0000010000000000000110 /* IIGSCore.framework */,
 				1A0000010000000000000111 /* IIGSCoreTests.xctest */,
 				1A000001000000000000012A /* IIGSDebuggerCLI */,
+				1A0000010000000000000133 /* IIGSDebugger.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -353,6 +462,24 @@
 			productReference = 1A000001000000000000012A /* IIGSDebuggerCLI */;
 			productType = "com.apple.product-type.tool";
 		};
+		1A0000010000000000000033 /* IIGSDebugger */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A0000010000000000000084 /* Build configuration list for PBXNativeTarget "IIGSDebugger" */;
+			buildPhases = (
+				1A0000010000000000000046 /* Sources */,
+				1A0000010000000000000047 /* Frameworks */,
+				1A0000010000000000000048 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1A00000100000000000000C6 /* PBXTargetDependency */,
+			);
+			name = IIGSDebugger;
+			productName = IIGSDebugger;
+			productReference = 1A0000010000000000000133 /* IIGSDebugger.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -373,6 +500,9 @@
 					1A0000010000000000000032 = {
 						CreatedOnToolsVersion = 26.0;
 					};
+					1A0000010000000000000033 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 				};
 			};
 			buildConfigurationList = 1A0000010000000000000082 /* Build configuration list for PBXProject "IIGSCore" */;
@@ -391,6 +521,7 @@
 				1A0000010000000000000030 /* IIGSCore */,
 				1A0000010000000000000031 /* IIGSCoreTests */,
 				1A0000010000000000000032 /* IIGSDebuggerCLI */,
+				1A0000010000000000000033 /* IIGSDebugger */,
 			);
 		};
 /* End PBXProject section */
@@ -420,6 +551,9 @@
 				1A000001000000000000001D /* IIGSIWMController.swift in Sources */,
 				1A000001000000000000001F /* IIGSSoundController.swift in Sources */,
 				1A0000010000000000000023 /* IIGSDebugger.swift in Sources */,
+				1A0000010000000000000035 /* IIGSDebuggerSnapshot.swift in Sources */,
+				1A0000010000000000000037 /* IIGSEventScheduler.swift in Sources */,
+				1A0000010000000000000038 /* IIGSInterruptState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -440,6 +574,8 @@
 				1A0000010000000000000022 /* MachinePhase11Tests.swift in Sources */,
 				1A0000010000000000000024 /* DebuggerPhase12Tests.swift in Sources */,
 				1A0000010000000000000027 /* Phase13CLIRuntimeTests.swift in Sources */,
+				1A0000010000000000000036 /* DebuggerPhase14Tests.swift in Sources */,
+				1A0000010000000000000039 /* TimingPhase15Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -448,6 +584,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A0000010000000000000025 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000010000000000000046 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A0000010000000000000028 /* IIGSDebuggerApp.swift in Sources */,
+				1A0000010000000000000029 /* DebuggerStore.swift in Sources */,
+				1A000001000000000000002A /* ContentView.swift in Sources */,
+				1A000001000000000000002B /* ControlPanel.swift in Sources */,
+				1A000001000000000000002C /* RegisterPanel.swift in Sources */,
+				1A000001000000000000002D /* MemoryPanel.swift in Sources */,
+				1A000001000000000000002E /* BreakpointPanel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -468,6 +618,11 @@
 			isa = PBXTargetDependency;
 			target = 1A0000010000000000000032 /* IIGSDebuggerCLI */;
 			targetProxy = 1A00000100000000000000C3 /* PBXContainerItemProxy */;
+		};
+		1A00000100000000000000C6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1A0000010000000000000030 /* IIGSCore */;
+			targetProxy = 1A00000100000000000000C5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -721,6 +876,54 @@
 			};
 			name = Release;
 		};
+		1A0000010000000000000068 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = IIGSDebugger;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.local.IIGSDebugger;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		1A0000010000000000000069 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = IIGSDebugger;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.local.IIGSDebugger;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -756,6 +959,15 @@
 			buildConfigurations = (
 				1A0000010000000000000066 /* Debug */,
 				1A0000010000000000000067 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1A0000010000000000000084 /* Build configuration list for PBXNativeTarget "IIGSDebugger" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A0000010000000000000068 /* Debug */,
+				1A0000010000000000000069 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

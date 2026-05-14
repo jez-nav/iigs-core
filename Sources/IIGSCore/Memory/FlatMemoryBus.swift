@@ -2,21 +2,24 @@ public final class FlatMemoryBus: IIGSBus {
     public static let fullAddressSpaceSize = 0x0100_0000
 
     private var bytes: [UInt8]
+    private let scheduler: IIGSEventScheduler?
     public private(set) var romImage: IIGSROMImage?
     public private(set) var softSwitches = IIGSSoftSwitchState()
+    public private(set) var interruptState = IIGSInterruptState()
     public let adbController = IIGSADBController()
     public let iwmController = IIGSIWMController()
     public let soundController = IIGSSoundController()
 
     public private(set) var cycleCount: UInt64 = 0
 
-    public init(size: Int = FlatMemoryBus.fullAddressSpaceSize) {
+    public init(size: Int = FlatMemoryBus.fullAddressSpaceSize, scheduler: IIGSEventScheduler? = nil) {
         precondition(size > 0 && size <= FlatMemoryBus.fullAddressSpaceSize)
         self.bytes = Array(repeating: 0, count: size)
+        self.scheduler = scheduler
     }
 
     public func read8(at address: UInt32) -> UInt8 {
-        cycleCount += 1
+        advanceCycles(1)
         let address = masked24(address)
         if let softSwitchValue = readSoftSwitch(at: address) {
             return softSwitchValue
@@ -32,7 +35,7 @@ public final class FlatMemoryBus: IIGSBus {
     }
 
     public func write8(_ value: UInt8, at address: UInt32) {
-        cycleCount += 1
+        advanceCycles(1)
         let address = masked24(address)
         if writeSoftSwitch(value, at: address) {
             return
@@ -53,11 +56,43 @@ public final class FlatMemoryBus: IIGSBus {
 
     public func idle(cycles: Int) {
         precondition(cycles >= 0)
-        cycleCount += UInt64(cycles)
+        advanceCycles(UInt64(cycles))
+    }
+
+    public var irqLineAsserted: Bool {
+        interruptState.irqAsserted || adbController.irqAsserted || soundController.docIRQAsserted
+    }
+
+    public var cpuSpeedMode: IIGSCPUSpeedMode {
+        softSwitches.speedRegister & 0x80 != 0 ? .fast : .slow
+    }
+
+    public func setVerticalBlankInterruptPending() {
+        interruptState.setVerticalBlankPending()
+    }
+
+    private func advanceCycles(_ cycles: UInt64) {
+        guard cycles > 0 else {
+            return
+        }
+        cycleCount += cycles
+        scheduler?.advance(to: cycleCount)
     }
 
     public func peek8(at address: UInt32) -> UInt8 {
         let index = Int(masked24(address))
+        guard index < bytes.count else {
+            return 0xFF
+        }
+        return bytes[index]
+    }
+
+    public func debugRead8(at address: UInt32) -> UInt8 {
+        let address = masked24(address)
+        if let romByte = readROMByte(at: address) {
+            return romByte
+        }
+        let index = storageIndex(for: address, isWrite: false)
         guard index < bytes.count else {
             return 0xFF
         }
@@ -213,6 +248,13 @@ public final class FlatMemoryBus: IIGSBus {
             return soundController.readPointerLow()
         case 0xC03F:
             return soundController.readPointerHigh()
+        case 0xC041:
+            return interruptState.enableRegister
+        case 0xC046:
+            return interruptState.videoStatusRegister
+        case 0xC047:
+            interruptState.clearAllVideoStatus()
+            return 0
         case 0xC02D:
             return softSwitches.slotROMSelect
         case 0xC035:
@@ -266,6 +308,10 @@ public final class FlatMemoryBus: IIGSBus {
             soundController.writePointerLow(value)
         case 0xC03F:
             soundController.writePointerHigh(value)
+        case 0xC041:
+            interruptState.enableRegister = value
+        case 0xC047:
+            interruptState.clearVideoStatus(mask: value == 0 ? 0xFF : value)
         case 0xC035:
             softSwitches.shadowInhibit = value
         case 0xC036:

@@ -3,4 +3,7 @@ Build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
-LocalAssets/
+LocalAssets
+.codex/
+default.profraw
+references/
