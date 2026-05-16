@@ -40,11 +40,11 @@ final class ShadowPhase5Tests: XCTestCase {
         XCTAssertEqual(memory[0xE00400], 0x7E)
     }
 
-    func testSuperHiresShadowFromAuxiliaryBankRequiresSHREnabled() {
+    func testSuperHiresShadowFromAuxiliaryBankDoesNotRequireSHREnabled() {
         let memory = FlatMemoryBus()
 
         memory[0x012000] = 0x55
-        XCTAssertEqual(memory[0xE12000], 0x00)
+        XCTAssertEqual(memory[0xE12000], 0x55)
 
         memory[0x00C029] = 0x80
         memory[0x012000] = 0x66
@@ -55,7 +55,6 @@ final class ShadowPhase5Tests: XCTestCase {
     func testSuperHiresShadowCanBeInhibited() {
         let memory = FlatMemoryBus()
 
-        memory[0x00C029] = 0x80
         memory[0x00C035] = 0x10
         memory[0x012000] = 0xCC
 
@@ -66,7 +65,6 @@ final class ShadowPhase5Tests: XCTestCase {
     func testShadowAllCopiesOddExpansionBanksIntoSuperHiresShadow() {
         let memory = FlatMemoryBus()
 
-        memory[0x00C029] = 0x80
         memory[0x032000] = 0x12
         XCTAssertEqual(memory[0xE12000], 0x00)
 

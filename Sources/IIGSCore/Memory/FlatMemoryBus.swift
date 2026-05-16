@@ -460,7 +460,6 @@ public final class FlatMemoryBus: IIGSBus {
 
     private func shouldShadowSuperHires(fromBank bank: UInt8, lowAddress: UInt16) -> Bool {
         guard (0x2000...0x9FFF).contains(lowAddress),
-              softSwitches.videoControl & 0x80 != 0,
               softSwitches.shadowInhibit & 0x10 == 0
         else {
             return false

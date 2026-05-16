@@ -13,6 +13,20 @@ final class DebuggerPhase20Tests: XCTestCase {
         XCTAssertEqual(frame.pixels.count, frame.width * frame.height)
     }
 
+    func testDebuggerSessionRendersPreEnableSuperHiresShadowWrites() {
+        let session = IIGSDebuggerSession()
+        writePaletteEntry(1, raw: 0x0F00, to: session.machine.memory)
+
+        session.machine.memory.write8(0x11, at: 0x012000)
+        session.machine.memory.write8(0x80, at: 0x00C029)
+
+        let frame = session.renderVideoFrame()
+
+        XCTAssertEqual(session.machine.memory.debugRead8(at: 0xE12000), 0x11)
+        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
+        XCTAssertEqual(frame[1, 0], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
+    }
+
     func testDebuggerSessionKeyboardInputFeedsAppleIIAndADBQueues() {
         let session = IIGSDebuggerSession()
 
@@ -60,5 +74,11 @@ final class DebuggerPhase20Tests: XCTestCase {
         bytes[bytes.count - 4] = UInt8(resetVector & 0x00FF)
         bytes[bytes.count - 3] = UInt8(resetVector >> 8)
         return try IIGSROMImage(bytes: bytes, version: .rom01)
+    }
+
+    private func writePaletteEntry(_ entry: Int, raw: UInt16, to memory: FlatMemoryBus, palette: Int = 0) {
+        let address = UInt32(0xE19E00 + (palette * 16 + entry) * 2)
+        memory.write8(UInt8(raw & 0x00FF), at: address)
+        memory.write8(UInt8(raw >> 8), at: address + 1)
     }
 }
