@@ -86,8 +86,9 @@ final class VideoPhase6Tests: XCTestCase {
 
         XCTAssertEqual(frame.width, 280)
         XCTAssertEqual(frame.height, 192)
-        XCTAssertEqual(frame[0, 0], .white)
-        XCTAssertEqual(frame[6, 7], .white)
+        XCTAssertEqual(frame[0, 0], .black)
+        XCTAssertEqual(frame[2, 0], .white)
+        XCTAssertEqual(frame[1, 3], .white)
     }
 
     func testClassicTextRendererHasVisibleColdResetTextColor() {
@@ -97,7 +98,7 @@ final class VideoPhase6Tests: XCTestCase {
         let frame = IIGSVideoRenderer.renderClassicText(from: memory)
 
         XCTAssertEqual(memory[0x00C022], 0x0F)
-        XCTAssertEqual(frame[0, 0], .white)
+        XCTAssertEqual(frame[2, 0], .white)
     }
 
     func testClassicTextRendererAllowsExplicitBlackOnBlackTextColor() {
@@ -120,8 +121,8 @@ final class VideoPhase6Tests: XCTestCase {
 
         XCTAssertEqual(frame.width, 560)
         XCTAssertEqual(frame.height, 192)
-        XCTAssertEqual(frame[0, 0], .white)
-        XCTAssertEqual(frame[7, 0], .white)
+        XCTAssertEqual(frame[2, 0], .white)
+        XCTAssertEqual(frame[9, 0], .white)
     }
 
     func testRenderFrameSelectsSuperHiresWhenEnabled() {

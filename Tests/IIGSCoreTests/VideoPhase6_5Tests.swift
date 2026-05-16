@@ -69,8 +69,9 @@ final class VideoPhase6_5Tests: XCTestCase {
         let frame = IIGSVideoRenderer.renderClassicHires(from: memory)
 
         XCTAssertEqual(frame[0, 159], .black)
-        XCTAssertEqual(frame[0, 160], .white)
-        XCTAssertEqual(frame[6, 167], .white)
+        XCTAssertEqual(frame[0, 160], .black)
+        XCTAssertEqual(frame[2, 160], .white)
+        XCTAssertEqual(frame[1, 163], .white)
     }
 
     func testRenderFrameSelectsHiresWhenGraphicsAndHiresAreEnabled() {
