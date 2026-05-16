@@ -364,7 +364,7 @@ final class CPUPhase1Tests: XCTestCase {
             0xA2, 0x00, 0x10, // LDX #$1000
             0xA0, 0x00, 0x20, // LDY #$2000
             0xA9, 0x00, 0x00, // LDA #$0000
-            0x54, 0x02, 0x03, // MVN $02,$03 in this core's source,destination operand order
+            0x54, 0x03, 0x02, // MVN destination bank $03, source bank $02
         ])
         machine.memory[0x021000] = 0x7E
         machine.reset()

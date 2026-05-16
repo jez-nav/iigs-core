@@ -90,6 +90,26 @@ final class VideoPhase6Tests: XCTestCase {
         XCTAssertEqual(frame[6, 7], .white)
     }
 
+    func testClassicTextRendererHasVisibleColdResetTextColor() {
+        let memory = FlatMemoryBus()
+        memory[0x000400] = 0xC1
+
+        let frame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        XCTAssertEqual(memory[0x00C022], 0x0F)
+        XCTAssertEqual(frame[0, 0], .white)
+    }
+
+    func testClassicTextRendererAllowsExplicitBlackOnBlackTextColor() {
+        let memory = FlatMemoryBus()
+        memory[0x00C022] = 0x00
+        memory[0x000400] = 0xC1
+
+        let frame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        XCTAssertEqual(frame[0, 0], .black)
+    }
+
     func testClassicTextRendererTracksEightyColumnWidth() {
         let memory = FlatMemoryBus()
         memory[0x00C00D] = 0

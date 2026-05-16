@@ -46,6 +46,26 @@ final class ROMPhase3Tests: XCTestCase {
         XCTAssertEqual(memory[0xFBFFFF], 0xFF)
     }
 
+    func testSlotFirmwareWindowReadsFromROMInsteadOfCompatibilityRAM() throws {
+        var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
+        bytes[0x1C10D] = 0x45
+        bytes[0x1C10F] = 0x47
+        bytes[0x1CFFF] = 0x5A
+        let rom = try IIGSROMImage(bytes: bytes)
+        let memory = FlatMemoryBus(size: 0x020000)
+
+        memory.installROM(rom)
+
+        XCTAssertEqual(memory[0x00C10D], 0x45)
+        XCTAssertEqual(memory[0x01C10F], 0x47)
+        XCTAssertEqual(memory[0xE1CFFF], 0x5A)
+        XCTAssertEqual(memory.debugRead8(at: 0x00C10D), 0x45)
+
+        memory[0x00C10D] = 0x99
+
+        XCTAssertEqual(memory[0x00C10D], 0x45)
+    }
+
     func testResetUsesInstalledROMVector() throws {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[0x1FFFC] = 0x78

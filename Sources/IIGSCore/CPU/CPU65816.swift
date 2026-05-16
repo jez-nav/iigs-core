@@ -1135,8 +1135,8 @@ private extension CPU65816 {
     }
 
     func blockMove(increment: Bool, using bus: IIGSBus) -> Int {
-        let sourceBank = fetch8(using: bus)
         let destinationBank = fetch8(using: bus)
+        let sourceBank = fetch8(using: bus)
         registers.dataBank = destinationBank
 
         let sourceAddress = (UInt32(sourceBank) << 16) | UInt32(registers.x)

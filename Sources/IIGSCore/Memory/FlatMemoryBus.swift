@@ -27,6 +27,9 @@ public final class FlatMemoryBus: IIGSBus {
         if let softSwitchValue = readSoftSwitch(at: address) {
             return softSwitchValue
         }
+        if let slotFirmwareByte = readSlotFirmwareByte(at: address) {
+            return slotFirmwareByte
+        }
         if let romByte = readROMByte(at: address) {
             return romByte
         }
@@ -41,6 +44,9 @@ public final class FlatMemoryBus: IIGSBus {
         advanceCycles(1)
         let address = masked24(address)
         if writeSoftSwitch(value, at: address) {
+            return
+        }
+        if isSlotFirmwareAddress(address) {
             return
         }
         if isReadOnlyROM(at: address) {
@@ -104,6 +110,9 @@ public final class FlatMemoryBus: IIGSBus {
 
     public func debugRead8(at address: UInt32) -> UInt8 {
         let address = masked24(address)
+        if let slotFirmwareByte = readSlotFirmwareByte(at: address) {
+            return slotFirmwareByte
+        }
         if let romByte = readROMByte(at: address) {
             return romByte
         }
@@ -140,6 +149,14 @@ public final class FlatMemoryBus: IIGSBus {
             return romImage?.byte(languageCardAddress: UInt16(address & 0xFFFF))
         }
         return romImage?.byte(mappedAt: address)
+    }
+
+    private func readSlotFirmwareByte(at address: UInt32) -> UInt8? {
+        guard isSlotFirmwareAddress(address) else {
+            return nil
+        }
+        let lowAddress = address & 0xFFFF
+        return romImage?.byte(mappedAt: 0xFF0000 | lowAddress)
     }
 
     private func isReadOnlyROM(at address: UInt32) -> Bool {
@@ -186,6 +203,17 @@ public final class FlatMemoryBus: IIGSBus {
         let bank = UInt8((address >> 16) & 0xFF)
         let lowAddress = UInt16(address & 0xFFFF)
         return bank == 0x00 && lowAddress >= 0xD000
+    }
+
+    private func isSlotFirmwareAddress(_ address: UInt32) -> Bool {
+        let bank = UInt8((address >> 16) & 0xFF)
+        let lowAddress = UInt16(address & 0xFFFF)
+        switch bank {
+        case 0x00, 0x01, 0xE0, 0xE1:
+            return (0xC100...0xCFFF).contains(lowAddress)
+        default:
+            return false
+        }
     }
 
     private func readSoftSwitch(at address: UInt32) -> UInt8? {
