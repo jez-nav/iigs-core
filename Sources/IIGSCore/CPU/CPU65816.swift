@@ -682,17 +682,18 @@ private extension CPU65816 {
         let result: UInt16
         let carryOut: Bool
         let binaryResult = UInt32(lhs) + UInt32(rhs) + carryIn
+        let wrappedBinaryResult = UInt16(truncatingIfNeeded: binaryResult)
 
         if registers.status.contains(.decimal) {
             let bcd = decimalAdd(lhs, rhs, carryIn: carryIn, width: width)
             result = bcd.result
             carryOut = bcd.carry
         } else {
-            result = UInt16(binaryResult) & width.mask
+            result = wrappedBinaryResult & width.mask
             carryOut = binaryResult > UInt32(width.mask)
         }
 
-        let overflow = (~(lhs ^ rhs) & (lhs ^ UInt16(binaryResult)) & width.signBit) != 0
+        let overflow = (~(lhs ^ rhs) & (lhs ^ wrappedBinaryResult) & width.signBit) != 0
         setFlag(.carry, carryOut)
         setFlag(.overflow, overflow)
         registers.accumulator = accumulatorResult(result)
@@ -705,6 +706,7 @@ private extension CPU65816 {
         let rhs = operand & width.mask
         let borrow: UInt32 = registers.status.contains(.carry) ? 0 : 1
         let binaryResult = UInt32(lhs) &- UInt32(rhs) &- borrow
+        let wrappedBinaryResult = UInt16(truncatingIfNeeded: binaryResult)
 
         let result: UInt16
         let carryOut: Bool
@@ -714,11 +716,11 @@ private extension CPU65816 {
             result = bcd.result
             carryOut = bcd.carry
         } else {
-            result = UInt16(binaryResult) & width.mask
+            result = wrappedBinaryResult & width.mask
             carryOut = UInt32(lhs) >= UInt32(rhs) + borrow
         }
 
-        let overflow = ((lhs ^ rhs) & (lhs ^ UInt16(binaryResult)) & width.signBit) != 0
+        let overflow = ((lhs ^ rhs) & (lhs ^ wrappedBinaryResult) & width.signBit) != 0
         setFlag(.carry, carryOut)
         setFlag(.overflow, overflow)
         registers.accumulator = accumulatorResult(result)
@@ -923,7 +925,9 @@ private extension CPU65816 {
     }
 
     func xba() -> Int {
-        registers.accumulator = (registers.accumulator << 8) | (registers.accumulator >> 8)
+        let lowByte = (registers.accumulator & 0x00FF) << 8
+        let highByte = (registers.accumulator >> 8) & 0x00FF
+        registers.accumulator = lowByte | highByte
         updateZeroNegative(registers.accumulator & 0x00FF, width: .byte)
         return 3
     }

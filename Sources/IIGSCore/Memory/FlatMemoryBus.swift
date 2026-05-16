@@ -10,6 +10,8 @@ public final class FlatMemoryBus: IIGSBus {
     public let iwmController = IIGSIWMController()
     public let soundController = IIGSSoundController()
     public private(set) var paddleController = IIGSPaddleController()
+    private var clockDataRegister: UInt8 = 0
+    private var clockControlRegister: UInt8 = 0
 
     public private(set) var cycleCount: UInt64 = 0
 
@@ -257,6 +259,10 @@ public final class FlatMemoryBus: IIGSBus {
             return iwmController.readDriveControlRegister()
         case 0xC032:
             return 0
+        case 0xC033:
+            return clockDataRegister
+        case 0xC034:
+            return clockControlRegister
         case 0xC03C:
             return soundController.readSoundControl()
         case 0xC03D:
@@ -324,6 +330,10 @@ public final class FlatMemoryBus: IIGSBus {
             iwmController.writeDriveControlRegister(value)
         case 0xC032:
             interruptState.clearC023Status(mask: value)
+        case 0xC033:
+            clockDataRegister = value
+        case 0xC034:
+            clockControlRegister = value & 0x7F
         case 0xC030:
             _ = soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC03C:
@@ -357,7 +367,12 @@ public final class FlatMemoryBus: IIGSBus {
     private func isIOPageAddress(_ address: UInt32) -> Bool {
         let bank = UInt8((address >> 16) & 0xFF)
         let lowAddress = UInt16(address & 0xFFFF)
-        return bank == 0x00 && (0xC000...0xC0FF).contains(lowAddress)
+        switch bank {
+        case 0x00, 0x01, 0xE0, 0xE1:
+            return (0xC000...0xC0FF).contains(lowAddress)
+        default:
+            return false
+        }
     }
 
     private func statusByte(_ enabled: Bool) -> UInt8 {

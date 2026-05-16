@@ -57,6 +57,22 @@ final class CPUPhase1Tests: XCTestCase {
         XCTAssertTrue(registers.status.contains(.indexRegister8Bit))
     }
 
+    func testXBASwapsAccumulatorBytesWithoutOverflowing() throws {
+        let machine = machineWithProgram([
+            0x18,             // CLC
+            0xFB,             // XCE
+            0xC2, 0x20,       // REP #$20
+            0xA9, 0x03, 0xBB, // LDA #$BB03
+            0xEB              // XBA
+        ])
+        machine.reset()
+
+        try machine.run(instructionLimit: 5)
+
+        XCTAssertEqual(machine.cpu.registers.accumulator, 0x03BB)
+        XCTAssertTrue(machine.cpu.registers.status.contains(.negative))
+    }
+
     func testImmediateLoadsStoresAndTransfers() throws {
         let machine = machineWithProgram([
             0xA9, 0x42,       // LDA #$42
@@ -186,6 +202,42 @@ final class CPUPhase1Tests: XCTestCase {
         XCTAssertEqual(machine.cpu.registers.accumulator, 0x2300)
         XCTAssertTrue(machine.cpu.registers.status.contains(.carry))
         XCTAssertTrue(machine.cpu.registers.status.contains(.zero))
+    }
+
+    func testPhase2ADCWrapsCarryWithoutDebugOverflow() throws {
+        let machine = machineWithProgram([
+            0x18,             // CLC
+            0xFB,             // XCE
+            0xC2, 0x20,       // REP #$20
+            0xA9, 0xFF, 0xFF, // LDA #$FFFF
+            0x18,             // CLC
+            0x69, 0x01, 0x00, // ADC #$0001
+        ])
+        machine.reset()
+
+        try machine.run(instructionLimit: 6)
+
+        XCTAssertEqual(machine.cpu.registers.accumulator, 0x0000)
+        XCTAssertTrue(machine.cpu.registers.status.contains(.carry))
+        XCTAssertTrue(machine.cpu.registers.status.contains(.zero))
+    }
+
+    func testPhase2SBCWrapsBorrowWithoutDebugOverflow() throws {
+        let machine = machineWithProgram([
+            0x18,             // CLC
+            0xFB,             // XCE
+            0xC2, 0x20,       // REP #$20
+            0xA9, 0x00, 0x00, // LDA #$0000
+            0x18,             // CLC: borrow one extra
+            0xE9, 0x01, 0x00, // SBC #$0001
+        ])
+        machine.reset()
+
+        try machine.run(instructionLimit: 6)
+
+        XCTAssertEqual(machine.cpu.registers.accumulator, 0xFFFE)
+        XCTAssertFalse(machine.cpu.registers.status.contains(.carry))
+        XCTAssertTrue(machine.cpu.registers.status.contains(.negative))
     }
 
     func testPhase2DecimalSBC() throws {

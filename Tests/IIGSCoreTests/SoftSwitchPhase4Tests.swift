@@ -78,6 +78,19 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         XCTAssertTrue(memory.softSwitches.languageCardBank2)
     }
 
+    func testIOPageMirrorsThroughAuxiliaryAndSlowBanks() {
+        let memory = FlatMemoryBus()
+
+        memory[0xE1C029] = 0x80
+        memory[0xE1C033] = 0xA5
+        memory[0xE1C034] = 0xA0
+
+        XCTAssertEqual(memory.softSwitches.videoControl, 0x80)
+        XCTAssertEqual(memory[0x00C033], 0xA5)
+        XCTAssertEqual(memory[0xE1C034] & 0x80, 0x00)
+        XCTAssertEqual(memory.debugRead8(at: 0xE1C034), 0x00)
+    }
+
     func testLanguageCardSoftSwitchesSelectROMOrWritableRAM() throws {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[0x1D000] = 0xA5

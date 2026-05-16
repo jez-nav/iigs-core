@@ -102,6 +102,28 @@ final class MachinePhase11Tests: XCTestCase {
         XCTAssertEqual(result.finalAddress, 0x008002)
     }
 
+    func testNativeModeCanPollMirroredClockControlThroughE1DataBank() throws {
+        let machine = IIGSMachine(romImage: try makeROM(.rom01, resetVector: 0x8000))
+        machine.memory.load([
+            0x18,                   // CLC
+            0xFB,                   // XCE: enter native mode with DBR still selectable
+            0xA9, 0xE1,             // LDA #$E1
+            0x48,                   // PHA
+            0xAB,                   // PLB: DBR = $E1
+            0xA9, 0xA0,             // LDA #$A0
+            0x8D, 0x34, 0xC0,       // STA $C034 through DBR mirror
+            0xAD, 0x34, 0xC0,       // LDA $C034 through DBR mirror
+            0x30, 0xFB,             // BMI back to LDA if busy bit remains set
+            0xEA                    // NOP at success target
+        ], at: 0x008000)
+        machine.reset(.cold)
+
+        let result = try machine.runUntilBreakpoint(0x008011, instructionLimit: 20)
+
+        XCTAssertEqual(result.stopReason, .breakpoint(0x008011))
+        XCTAssertEqual(machine.memory[0x00C034] & 0x80, 0x00)
+    }
+
     func testSlotStorageMountAPIsRemainAvailableForBootSelectionHarnesses() throws {
         let machine = IIGSMachine(romImage: try makeROM(.rom01, resetVector: 0x8000))
         let blockDevice = try IIGSBlockDevice(bytes: Array(repeating: 0, count: 800 * 1024))
