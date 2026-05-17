@@ -95,7 +95,7 @@ final class InputPhase7Tests: XCTestCase {
         memory.adbController.moveMouse(dx: 5, dy: -3, buttonDown: true)
 
         XCTAssertEqual(memory[0x00C027] & 0x80, 0x80)
-        XCTAssertEqual(memory[0x00C024], 0x80)
+        XCTAssertEqual(memory[0x00C024], 0x00)
         XCTAssertEqual(memory[0x00C024], 0x05)
         XCTAssertEqual(memory[0x00C024], 0xFD)
         XCTAssertEqual(memory[0x00C027] & 0x80, 0x00)
@@ -117,6 +117,20 @@ final class InputPhase7Tests: XCTestCase {
         _ = memory[0x00C024]
 
         XCTAssertFalse(memory.adbController.irqAsserted)
+    }
+
+    func testMouseButtonByteUsesFirmwareActiveLowConvention() {
+        let memory = FlatMemoryBus()
+
+        XCTAssertEqual(memory[0x00C024], 0x80)
+
+        memory.adbController.moveMouse(dx: 0, dy: 0, buttonDown: false)
+        XCTAssertEqual(memory[0x00C024], 0x80)
+        _ = memory[0x00C024]
+        _ = memory[0x00C024]
+
+        memory.adbController.moveMouse(dx: 0, dy: 0, buttonDown: true)
+        XCTAssertEqual(memory[0x00C024], 0x00)
     }
 
     func testListenRegisterThreeChangesKeyboardAddress() {

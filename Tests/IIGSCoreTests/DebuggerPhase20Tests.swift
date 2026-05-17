@@ -48,7 +48,7 @@ final class DebuggerPhase20Tests: XCTestCase {
 
         session.moveMouse(dx: 4, dy: -2, buttonDown: true)
 
-        XCTAssertEqual(session.machine.memory[0x00C024], 0x80)
+        XCTAssertEqual(session.machine.memory[0x00C024], 0x00)
         XCTAssertEqual(session.machine.memory[0x00C024], 0x04)
         XCTAssertEqual(session.machine.memory[0x00C024], 0xFE)
         XCTAssertEqual(session.snapshot().mouse.romX, 4)

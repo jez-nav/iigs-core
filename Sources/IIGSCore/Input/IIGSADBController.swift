@@ -110,7 +110,7 @@ public final class IIGSADBController {
         mouseButtonDown = buttonDown
         mouseX = mouseX &+ Int16(dx)
         mouseY = mouseY &+ Int16(dy)
-        mouseBytes.append(buttonDown ? 0x80 : 0x00)
+        mouseBytes.append(buttonDown ? 0x00 : 0x80)
         mouseBytes.append(UInt8(bitPattern: dx))
         mouseBytes.append(UInt8(bitPattern: dy))
     }
@@ -125,7 +125,7 @@ public final class IIGSADBController {
 
     func readMouseData() -> UInt8 {
         guard !mouseBytes.isEmpty else {
-            return 0
+            return 0x80
         }
         return mouseBytes.removeFirst()
     }
