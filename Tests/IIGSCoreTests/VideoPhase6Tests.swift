@@ -168,6 +168,16 @@ final class VideoPhase6Tests: XCTestCase {
         XCTAssertEqual(frame[2, 0], .black)
     }
 
+    func testFallbackCharacterGeneratorKeepsLowercaseDistinct() {
+        let generator = IIGSCharacterGenerator()
+        let uppercaseA = generator.glyph(forScreenByte: 0xC1, alternateCharacterSet: false)
+        let lowercaseA = generator.glyph(forScreenByte: 0xE1, alternateCharacterSet: false)
+
+        XCTAssertNotEqual(uppercaseA, lowercaseA)
+        XCTAssertTrue(lowercaseA.pixelLit(x: 5, y: 3))
+        XCTAssertFalse(lowercaseA.pixelLit(x: 2, y: 0))
+    }
+
     func testRenderFrameSelectsSuperHiresWhenEnabled() {
         let memory = FlatMemoryBus()
         memory[0x00C029] = 0x80
