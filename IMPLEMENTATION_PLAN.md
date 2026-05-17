@@ -26,6 +26,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 18: completed as a first core correctness pass for `$C023/$C032` interrupt state, scanline/one-second scheduler IRQ routing, deterministic paddle timer reads, and runtime harness coverage.
 - Phase 19: completed as a first debugger quality pass with core disassembly APIs, CLI disassembly/register editing, macOS disassembly and inspector panels, and tests.
 - Phase 20: completed as a first interactive debugger display/input pass with live video rendering, keyboard/mouse capture, ADB forwarding, and continuous run/pause controls.
+- Phase 21: planned as ROM 01 boot convergence, using the new Technical Notes and memory-map docs to move from visible ROM drawing to the expected blue startup path.
 
 ## Phase 13 Audit Snapshot
 
@@ -544,6 +545,33 @@ Tests:
 - Store/input tests verify keyboard and mouse events reach core-visible ADB/Apple II state.
 - macOS app target builds.
 - Full macOS XCTest suite remains green.
+
+## Phase 21: ROM 01 Boot Convergence
+
+Goal: get from "ROM draws something" to the expected ROM 01 blue startup screens by making the emulated hardware state credible enough for firmware startup.
+
+Status: planned. The current debugger display can show ROM-generated output, including white fill/test patterns, but the firmware has not yet reached the expected blue startup path. New references under `IIGS-Spec/TN`, especially `TN.IIGS.095_ROM_Diagnostic_Errors.txt`, `TN.IIGS.039_Mega_II_Video_Counters.txt`, `TN.IIGS.026_ROM_Revision_Summary.txt`, and `TN.IIGS.030_Apple_IIgs_Hardware_Reference_Updates.txt`, should guide this pass.
+
+Implement:
+
+- Add CLI/debugger support to decode `System Bad: AABBCCDD` diagnostic values using Technical Note #95.
+- Add ROM startup watchpoints or structured trace hooks for diagnostic entry, reset path, soft-switch writes, video-mode changes, and key firmware checkpoints.
+- Confirm the emulator is not accidentally forcing diagnostic boot through default ADB/keyboard modifier state.
+- Audit cold and warm reset state against ROM 1 expectations, including state register, shadow register, CPU mode, interrupt state, speed state, and video defaults.
+- Correct `$C019`, `$C02E`, and `$C02F` VBL/scanline behavior using Technical Note #39, including VBL starting at scan line 192 and Mega II counter bit layout.
+- Revisit `$C035`, `$C036`, `$C068`, shadowing, and slow-memory mapping against the new memory map and Technical Note #26 ROM revision notes.
+- Strengthen ADB and keyboard startup defaults so ROM 01 sees sane no-input state unless tests intentionally inject Open-Apple/Option or other modifiers.
+- Add debugger inspector fields for state register, shadow register, VBL/counter values, current video source/mode, and recent soft-switch writes.
+- Keep performance work secondary until ROM 01 takes the expected startup path; use bounded runtime checkpoints first, then optimize hot loops after correctness is clearer.
+
+Tests:
+
+- Unit tests decode representative ROM diagnostic errors from Technical Note #95.
+- Reset-state tests assert ROM 1 cold/warm defaults for state register, shadow register, speed, interrupt, and video-visible state.
+- Timing tests cover VBL start at scan line 192 and `$C02E/$C02F` Mega II counter encoding.
+- ADB/keyboard tests verify default boot has no asserted startup modifiers and that forced diagnostic modifier combinations remain explicitly injectable.
+- ROM01 runtime smoke tests run to conservative checkpoints without writing a `System Bad` screen when the local legal ROM fixture exists.
+- Debugger snapshot tests expose the new ROM-boot inspector fields without adding host UI dependencies to `IIGSCore`.
 
 ## Definition of Done Per Phase
 
