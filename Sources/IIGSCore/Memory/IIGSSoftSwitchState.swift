@@ -35,7 +35,7 @@ public struct IIGSSoftSwitchState: Equatable, Sendable {
         self.hires = false
         self.shadowInhibit = 0
         self.textColor = 0x0F
-        self.videoControl = 0
+        self.videoControl = 0x01
         self.slotROMSelect = 0
         self.speedRegister = 0
         self.languageCardReadROM = true

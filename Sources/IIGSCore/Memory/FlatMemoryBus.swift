@@ -348,6 +348,14 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC047:
             interruptState.clearAllVideoStatus()
             return 0
+        case 0xC060:
+            return 0
+        case 0xC061:
+            return adbController.modifierRegister & IIGSADBModifiers.command.rawValue != 0 ? 0x80 : 0x00
+        case 0xC062:
+            return adbController.modifierRegister & IIGSADBModifiers.option.rawValue != 0 ? 0x80 : 0x00
+        case 0xC063:
+            return 0
         case 0xC02D:
             return softSwitches.slotROMSelect
         case 0xC035:

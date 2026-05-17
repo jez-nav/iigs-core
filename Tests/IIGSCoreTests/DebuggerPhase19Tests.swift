@@ -68,13 +68,13 @@ final class DebuggerPhase19Tests: XCTestCase {
 
     func testSnapshotExposesInterruptsAndPendingEvents() {
         let machine = IIGSMachine()
-        machine.memory.write8(0x04, at: 0x00C023)
+        machine.memory.write8(IIGSInterruptState.c023ScanlineEnableMask, at: 0x00C023)
         machine.memory.setScanlineInterruptPending()
         machine.scheduler.schedule(kind: .disk, at: 123, payload: 7)
 
         let snapshot = IIGSDebuggerSession(machine: machine).snapshot()
 
-        XCTAssertEqual(snapshot.interrupts.c023Status, 0xC4)
+        XCTAssertEqual(snapshot.interrupts.c023Status, 0xA2)
         XCTAssertTrue(snapshot.interrupts.scanlinePending)
         XCTAssertTrue(snapshot.interrupts.irqAsserted)
         XCTAssertTrue(snapshot.pendingEvents.contains { $0.kind == .disk && $0.payload == 7 })

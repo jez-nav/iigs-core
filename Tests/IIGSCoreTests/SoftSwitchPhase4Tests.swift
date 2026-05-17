@@ -91,6 +91,29 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         XCTAssertEqual(memory.debugRead8(at: 0xE1C034), 0x00)
     }
 
+    func testGameButtonReadsExposeCommandAndOptionModifiers() {
+        let memory = FlatMemoryBus(size: 0x020000)
+
+        XCTAssertEqual(memory[0x00C061] & 0x80, 0x00)
+        XCTAssertEqual(memory[0x00C062] & 0x80, 0x00)
+
+        memory.adbController.setModifiers([.command])
+
+        XCTAssertEqual(memory[0x00C061] & 0x80, 0x80)
+        XCTAssertEqual(memory[0x00C062] & 0x80, 0x00)
+
+        memory.adbController.setModifiers([.option])
+
+        XCTAssertEqual(memory[0x00C061] & 0x80, 0x00)
+        XCTAssertEqual(memory[0x00C062] & 0x80, 0x80)
+    }
+
+    func testNewVideoRegisterPowersUpWithBankLatchInhibitSet() {
+        let memory = FlatMemoryBus(size: 0x020000)
+
+        XCTAssertEqual(memory[0x00C029] & 0x01, 0x01)
+    }
+
     func testRealTimeClockTransactionsCompleteAndReadParameterRAM() {
         let memory = FlatMemoryBus()
 

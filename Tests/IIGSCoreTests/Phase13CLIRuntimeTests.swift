@@ -185,12 +185,12 @@ final class Phase13CLIRuntimeTests: XCTestCase {
         set FFFC 00
         set FFFD 80
         reset
-        set C023 04
+        set C023 02
         cycles 65
         assert status irq 1
-        assert mem C023 C4
-        set C032 40
-        assert mem C023 04
+        assert mem C023 A2
+        set C032 20
+        assert mem C023 02
         """)
         defer {
             removeTempFile(binary)
@@ -204,8 +204,8 @@ final class Phase13CLIRuntimeTests: XCTestCase {
 
         XCTAssertEqual(result.status, 0)
         XCTAssertTrue(result.stdout.contains("ASSERT OK status IRQ 1"))
-        XCTAssertTrue(result.stdout.contains("ASSERT OK mem $00C023 $C4"))
-        XCTAssertTrue(result.stdout.contains("ASSERT OK mem $00C023 $04"))
+        XCTAssertTrue(result.stdout.contains("ASSERT OK mem $00C023 $A2"))
+        XCTAssertTrue(result.stdout.contains("ASSERT OK mem $00C023 $02"))
     }
 
     func testInvalidCommandReturnsNonzeroAndUsefulError() throws {

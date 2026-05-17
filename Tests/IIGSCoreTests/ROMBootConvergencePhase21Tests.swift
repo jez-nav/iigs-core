@@ -41,7 +41,10 @@ final class ROMBootConvergencePhase21Tests: XCTestCase {
         XCTAssertEqual(machine.memory.softSwitches.stateRegister, 0x0C)
         XCTAssertEqual(machine.memory.softSwitches.shadowInhibit, 0x08)
         XCTAssertEqual(machine.memory.softSwitches.speedRegister & 0x80, 0x00)
+        XCTAssertEqual(machine.memory.softSwitches.videoControl & 0x01, 0x01)
         XCTAssertEqual(machine.memory.adbController.modifierRegister, 0x00)
+        XCTAssertEqual(machine.memory[0x00C061] & 0x80, 0x00)
+        XCTAssertEqual(machine.memory[0x00C062] & 0x80, 0x00)
         XCTAssertFalse(machine.memory.irqLineAsserted)
     }
 
