@@ -24,6 +24,7 @@
 		1A000001000000000000000F /* ShadowPhase5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000116 /* ShadowPhase5Tests.swift */; };
 		1A0000010000000000000012 /* IIGSVideoTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000117 /* IIGSVideoTiming.swift */; };
 		1A0000010000000000000013 /* IIGSVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000118 /* IIGSVideoRenderer.swift */; };
+		1A000001000000000000004C /* IIGSCharacterGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000142 /* IIGSCharacterGenerator.swift */; };
 		1A0000010000000000000014 /* VideoPhase6Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000119 /* VideoPhase6Tests.swift */; };
 		1A0000010000000000000015 /* VideoPhase6_5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000011A /* VideoPhase6_5Tests.swift */; };
 		1A0000010000000000000016 /* IIGSADBController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000011B /* IIGSADBController.swift */; };
@@ -132,6 +133,7 @@
 		1A0000010000000000000116 /* ShadowPhase5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowPhase5Tests.swift; sourceTree = "<group>"; };
 		1A0000010000000000000117 /* IIGSVideoTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSVideoTiming.swift; sourceTree = "<group>"; };
 		1A0000010000000000000118 /* IIGSVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSVideoRenderer.swift; sourceTree = "<group>"; };
+		1A0000010000000000000142 /* IIGSCharacterGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSCharacterGenerator.swift; sourceTree = "<group>"; };
 		1A0000010000000000000119 /* VideoPhase6Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPhase6Tests.swift; sourceTree = "<group>"; };
 		1A000001000000000000011A /* VideoPhase6_5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPhase6_5Tests.swift; sourceTree = "<group>"; };
 		1A000001000000000000011B /* IIGSADBController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSADBController.swift; sourceTree = "<group>"; };
@@ -296,6 +298,7 @@
 		1A000001000000000000005A /* Video */ = {
 			isa = PBXGroup;
 			children = (
+				1A0000010000000000000142 /* IIGSCharacterGenerator.swift */,
 				1A0000010000000000000117 /* IIGSVideoTiming.swift */,
 				1A0000010000000000000118 /* IIGSVideoRenderer.swift */,
 			);
@@ -568,6 +571,7 @@
 				1A0000010000000000000008 /* IIGSCore.swift in Sources */,
 				1A000001000000000000000B /* IIGSROMImage.swift in Sources */,
 				1A000001000000000000000D /* IIGSSoftSwitchState.swift in Sources */,
+				1A000001000000000000004C /* IIGSCharacterGenerator.swift in Sources */,
 				1A0000010000000000000012 /* IIGSVideoTiming.swift in Sources */,
 				1A0000010000000000000013 /* IIGSVideoRenderer.swift in Sources */,
 				1A0000010000000000000016 /* IIGSADBController.swift in Sources */,

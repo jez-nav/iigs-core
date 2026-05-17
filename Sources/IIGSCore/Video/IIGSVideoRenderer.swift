@@ -169,7 +169,12 @@ public enum IIGSVideoRenderer {
         for row in 0..<rows {
             for column in 0..<columns {
                 let byte = classicTextByte(from: memory, pageBase: pageBase, row: row, column: column, columns: columns)
-                drawTextCell(byte: byte, column: column, row: row, foreground: foreground, background: background, into: &frame)
+                let glyph = memory.characterGenerator.glyph(
+                    forScreenByte: byte,
+                    alternateCharacterSet: memory.softSwitches.alternateCharacterSet,
+                    flashPhase: classicTextFlashPhase(from: memory)
+                )
+                drawTextCell(glyph: glyph, column: column, row: row, foreground: foreground, background: background, into: &frame)
             }
         }
 
@@ -254,9 +259,18 @@ public enum IIGSVideoRenderer {
         column: Int,
         columns: Int
     ) -> UInt8 {
-        let mainColumn = columns == 80 ? column / 2 : column
-        let pageOffset = classicTextOffset(row: row, column: mainColumn)
-        return memory.peek8(at: pageBase + UInt32(pageOffset))
+        let textColumn = columns == 80 ? column / 2 : column
+        let pageOffset = UInt32(classicTextOffset(row: row, column: textColumn))
+        if columns == 80 {
+            let bankBase: UInt32 = column & 1 == 0 ? 0x010000 : 0x000000
+            return memory.peek8(at: bankBase + (pageBase & 0xFFFF) + pageOffset)
+        }
+        return memory.peek8(at: pageBase + pageOffset)
+    }
+
+    private static func classicTextFlashPhase(from memory: FlatMemoryBus) -> Bool {
+        let frame = memory.cycleCount / UInt64(IIGSVideoTiming.cyclesPerFrame)
+        return frame % 60 >= 30
     }
 
     private static func classicTextOffset(row: Int, column: Int) -> Int {
@@ -264,7 +278,7 @@ public enum IIGSVideoRenderer {
     }
 
     private static func drawTextCell(
-        byte: UInt8,
+        glyph: IIGSCharacterGlyph,
         column: Int,
         row: Int,
         foreground: IIGSRGBColor,
@@ -273,17 +287,10 @@ public enum IIGSVideoRenderer {
     ) {
         let startX = column * classicTextCellWidth
         let startY = row * classicTextCellHeight
-        let glyph = classicGlyphRows(for: byte)
-        let character = byte & 0x7F
-        let inverted = byte < 0x40 && character != 0x00 && character != 0x20
 
         for cellY in 0..<classicTextCellHeight {
-            let rowBits = cellY < glyph.count ? glyph[cellY] : 0
             for cellX in 0..<classicTextCellWidth {
-                let glyphColumn = cellX - 1
-                let lit = (0..<5).contains(glyphColumn) && (rowBits & (1 << UInt8(4 - glyphColumn))) != 0
-                let visible = inverted ? !lit : lit
-                frame[startX + cellX, startY + cellY] = visible ? foreground : background
+                frame[startX + cellX, startY + cellY] = glyph.pixelLit(x: cellX, y: cellY) ? foreground : background
             }
         }
     }
@@ -312,16 +319,14 @@ public enum IIGSVideoRenderer {
                 let byte = classicTextByte(from: memory, pageBase: pageBase, row: sourceRow, column: column, columns: columns)
                 let startX = column * classicTextCellWidth
                 let startY = destinationStartY + (sourceRow - rows.lowerBound) * rowHeight
-                let glyph = classicGlyphRows(for: byte)
-                let character = byte & 0x7F
-                let inverted = byte < 0x40 && character != 0x00 && character != 0x20
+                let glyph = memory.characterGenerator.glyph(
+                    forScreenByte: byte,
+                    alternateCharacterSet: memory.softSwitches.alternateCharacterSet,
+                    flashPhase: classicTextFlashPhase(from: memory)
+                )
                 for cellY in 0..<classicTextCellHeight where startY + cellY < frame.height {
-                    let rowBits = cellY < glyph.count ? glyph[cellY] : 0
                     for cellX in 0..<classicTextCellWidth where startX + cellX < frame.width {
-                        let glyphColumn = cellX - 1
-                        let lit = (0..<5).contains(glyphColumn) && (rowBits & (1 << UInt8(4 - glyphColumn))) != 0
-                        let visible = inverted ? !lit : lit
-                        frame[startX + cellX, startY + cellY] = visible ? foreground : background
+                        frame[startX + cellX, startY + cellY] = glyph.pixelLit(x: cellX, y: cellY) ? foreground : background
                     }
                 }
             }

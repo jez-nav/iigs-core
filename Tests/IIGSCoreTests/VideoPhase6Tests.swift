@@ -117,13 +117,55 @@ final class VideoPhase6Tests: XCTestCase {
         memory[0x00C00D] = 0
         memory[0x00C022] = 0xF0
         memory[0x000400] = 0xC1
+        memory[0x010400] = 0xA0
 
         let frame = IIGSVideoRenderer.renderClassicText(from: memory)
 
         XCTAssertEqual(frame.width, 560)
         XCTAssertEqual(frame.height, 192)
-        XCTAssertEqual(frame[2, 0], .white)
+        XCTAssertEqual(frame[2, 0], .black)
         XCTAssertEqual(frame[9, 0], .white)
+    }
+
+    func testCharacterGeneratorCanLoadRuntimeCharacterROM() {
+        var rom = Array(repeating: UInt8(0), count: 256 * IIGSCharacterGlyph.height)
+        let glyphOffset = 0x41 * IIGSCharacterGlyph.height
+        rom[glyphOffset] = 0x7F
+
+        var generator = IIGSCharacterGenerator()
+        generator.loadCharacterROM(rom)
+        let glyph = generator.glyph(forScreenByte: 0xC1, alternateCharacterSet: false)
+
+        XCTAssertEqual(generator.source, .characterROM)
+        XCTAssertTrue(glyph.pixelLit(x: 0, y: 0))
+        XCTAssertTrue(glyph.pixelLit(x: 6, y: 0))
+        XCTAssertFalse(glyph.pixelLit(x: 0, y: 1))
+    }
+
+    func testAlternateCharacterSetUsesMouseTextGlyphs() {
+        let memory = FlatMemoryBus()
+        memory[0x00C022] = 0xF0
+        memory[0x00C00F] = 0
+        memory[0x000400] = 0x40
+        memory[0x000401] = 0x4C
+
+        let frame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        XCTAssertEqual(memory[0x00C01E] & 0x80, 0x80)
+        XCTAssertEqual(frame[0, 0], .white)
+        XCTAssertEqual(frame[7, 3], .white)
+        XCTAssertEqual(frame[12, 3], .white)
+    }
+
+    func testPrimaryCharacterSetFlashesLowRangeBytes() {
+        let memory = FlatMemoryBus()
+        memory[0x00C022] = 0xF0
+        memory[0x000400] = 0x41
+        memory.idle(cycles: IIGSVideoTiming.cyclesPerFrame * 30)
+
+        let frame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        XCTAssertEqual(frame[2, 0], .black)
     }
 
     func testRenderFrameSelectsSuperHiresWhenEnabled() {

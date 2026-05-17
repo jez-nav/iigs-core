@@ -5,6 +5,7 @@ public final class FlatMemoryBus: IIGSBus {
     private let scheduler: IIGSEventScheduler?
     public private(set) var romImage: IIGSROMImage?
     public private(set) var softSwitches = IIGSSoftSwitchState()
+    public private(set) var characterGenerator = IIGSCharacterGenerator()
     public private(set) var interruptState = IIGSInterruptState()
     public let adbController = IIGSADBController()
     public let iwmController = IIGSIWMController()
@@ -143,6 +144,14 @@ public final class FlatMemoryBus: IIGSBus {
         self.romImage = romImage
         softSwitches.setROMVersion(romImage.version)
         adbController.setROMVersion(romImage.version)
+    }
+
+    public func loadCharacterROM(_ bytes: [UInt8], bank: Int = 0, invertedBits: Bool = false) {
+        characterGenerator.loadCharacterROM(bytes, bank: bank, invertedBits: invertedBits)
+    }
+
+    public func useFallbackCharacterGenerator() {
+        characterGenerator = IIGSCharacterGenerator()
     }
 
     public func removeROM() {

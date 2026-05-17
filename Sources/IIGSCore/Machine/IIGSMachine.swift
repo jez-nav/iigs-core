@@ -57,6 +57,10 @@ public final class IIGSMachine {
         installROM(try IIGSROMImage(bytes: bytes))
     }
 
+    public func loadCharacterROM(_ bytes: [UInt8], bank: Int = 0, invertedBits: Bool = false) {
+        memory.loadCharacterROM(bytes, bank: bank, invertedBits: invertedBits)
+    }
+
     public func reset(_ kind: IIGSResetKind = .cold) {
         lastResetKind = kind
         scheduler.reset(to: 0)
