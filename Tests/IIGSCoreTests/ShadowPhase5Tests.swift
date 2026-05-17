@@ -2,6 +2,26 @@ import XCTest
 @testable import IIGSCore
 
 final class ShadowPhase5Tests: XCTestCase {
+    func testSlowMemoryBanksMirrorMainAndAuxiliaryOutsideDisplayShadowRegions() {
+        let memory = FlatMemoryBus()
+
+        memory[0x000300] = 0x12
+        memory[0x010300] = 0x34
+        memory[0x006000] = 0x56
+        memory[0x016000] = 0x78
+
+        XCTAssertEqual(memory[0xE00300], 0x12)
+        XCTAssertEqual(memory[0xE10300], 0x34)
+        XCTAssertEqual(memory[0xE06000], 0x56)
+        XCTAssertEqual(memory[0xE16000], 0x78)
+
+        memory[0xE00301] = 0x9A
+        memory[0xE10301] = 0xBC
+
+        XCTAssertEqual(memory[0x000301], 0x9A)
+        XCTAssertEqual(memory[0x010301], 0xBC)
+    }
+
     func testClassicTextAndHiresWritesShadowIntoE0() {
         let memory = FlatMemoryBus()
 

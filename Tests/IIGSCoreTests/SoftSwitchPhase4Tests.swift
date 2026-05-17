@@ -91,6 +91,46 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         XCTAssertEqual(memory.debugRead8(at: 0xE1C034), 0x00)
     }
 
+    func testRealTimeClockTransactionsCompleteAndReadParameterRAM() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C033] = 0xBA
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x14
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0xFF
+        memory[0x00C034] = 0xE0
+
+        XCTAssertEqual(memory[0x00C034] & 0x80, 0x00)
+        XCTAssertEqual(memory[0x00C033], 0x00)
+    }
+
+    func testRealTimeClockProvidesValidDefaultComplementChecksumByte() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C033] = 0xBF
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x78
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x00
+        memory[0x00C034] = 0xE0
+
+        XCTAssertEqual(memory[0x00C033], 0x90)
+    }
+
+    func testRealTimeClockProvidesBootSignatureBytes() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C033] = 0xBD
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x44
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x00
+        memory[0x00C034] = 0xE0
+
+        XCTAssertEqual(memory[0x00C033], 0xCB)
+    }
+
     func testLanguageCardSoftSwitchesSelectROMOrWritableRAM() throws {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[0x1D000] = 0xA5

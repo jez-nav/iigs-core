@@ -10,8 +10,7 @@ public final class FlatMemoryBus: IIGSBus {
     public let iwmController = IIGSIWMController()
     public let soundController = IIGSSoundController()
     public private(set) var paddleController = IIGSPaddleController()
-    private var clockDataRegister: UInt8 = 0
-    private var clockControlRegister: UInt8 = 0
+    private var realTimeClock = IIGSRealTimeClock()
 
     public private(set) var cycleCount: UInt64 = 0
 
@@ -169,6 +168,9 @@ public final class FlatMemoryBus: IIGSBus {
     private func storageIndex(for address: UInt32, isWrite: Bool) -> Int {
         let bank = UInt8((address >> 16) & 0xFF)
         let lowAddress = UInt16(address & 0xFFFF)
+        if let slowIndex = slowMemoryStorageIndex(forBank: bank, lowAddress: lowAddress) {
+            return slowIndex
+        }
         guard bank == 0x00 else {
             return Int(address)
         }
@@ -189,6 +191,29 @@ public final class FlatMemoryBus: IIGSBus {
         }
 
         return Int(address)
+    }
+
+    private func slowMemoryStorageIndex(forBank bank: UInt8, lowAddress: UInt16) -> Int? {
+        switch bank {
+        case 0xE0:
+            guard lowAddress < 0xC000 else {
+                return nil
+            }
+            if classicShadowInhibitMask(for: lowAddress) != nil {
+                return Int(0xE00000 + UInt32(lowAddress))
+            }
+            return Int(lowAddress)
+        case 0xE1:
+            guard lowAddress < 0xC000 else {
+                return nil
+            }
+            if (0x2000...0x9FFF).contains(lowAddress) {
+                return Int(0xE10000 + UInt32(lowAddress))
+            }
+            return Int(0x010000 + UInt32(lowAddress))
+        default:
+            return nil
+        }
     }
 
     private func languageCardStorageIndex(for lowAddress: UInt16) -> Int {
@@ -288,9 +313,9 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC032:
             return 0
         case 0xC033:
-            return clockDataRegister
+            return realTimeClock.readData()
         case 0xC034:
-            return clockControlRegister
+            return realTimeClock.readControl()
         case 0xC03C:
             return soundController.readSoundControl()
         case 0xC03D:
@@ -359,9 +384,9 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC032:
             interruptState.clearC023Status(mask: value)
         case 0xC033:
-            clockDataRegister = value
+            realTimeClock.writeData(value)
         case 0xC034:
-            clockControlRegister = value & 0x7F
+            realTimeClock.writeControl(value)
         case 0xC030:
             _ = soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC03C:
@@ -522,5 +547,69 @@ public final class FlatMemoryBus: IIGSBus {
             return
         }
         bytes[index] = value
+    }
+}
+
+private struct IIGSRealTimeClock {
+    private var dataRegister: UInt8 = 0
+    private var controlRegister: UInt8 = 0
+    private var commandBuffer: [UInt8] = []
+    private var parameterRAM: [UInt8] = {
+        var bytes = Array(repeating: UInt8(0), count: 256)
+        // ROM 01 startup expects a valid battery-RAM signature and checksum.
+        bytes[0xB1] = 0xCB
+        bytes[0xB2] = 0xD2
+        bytes[0xB3] = 0xC7
+        bytes[0xB4] = 0xC2
+        bytes[0xFC] = 0x3A
+        bytes[0xFD] = 0xB2
+        bytes[0xFE] = 0x90
+        bytes[0xFF] = 0x18
+        return bytes
+    }()
+
+    mutating func readData() -> UInt8 {
+        dataRegister
+    }
+
+    func readControl() -> UInt8 {
+        controlRegister & 0x7F
+    }
+
+    mutating func writeData(_ value: UInt8) {
+        dataRegister = value
+    }
+
+    mutating func writeControl(_ value: UInt8) {
+        controlRegister = value & 0x7F
+        guard value & 0x80 != 0 else {
+            return
+        }
+
+        if value & 0x40 == 0 {
+            appendCommandByte(dataRegister)
+        } else {
+            dataRegister = parameterRAM[Int(decodedCommandAddress() ?? 0)]
+            commandBuffer.removeAll(keepingCapacity: true)
+        }
+    }
+
+    private mutating func appendCommandByte(_ value: UInt8) {
+        commandBuffer.append(value)
+        if commandBuffer.count > 2 {
+            commandBuffer.removeFirst(commandBuffer.count - 2)
+        }
+    }
+
+    private func decodedCommandAddress() -> UInt8? {
+        guard commandBuffer.count == 2 else {
+            return nil
+        }
+        let high = commandBuffer[0]
+        let low = commandBuffer[1]
+        guard high & 0x38 == 0x38 else {
+            return nil
+        }
+        return ((high & 0x07) << 5) | ((low >> 2) & 0x1F)
     }
 }
