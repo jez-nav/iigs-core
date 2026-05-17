@@ -35,7 +35,7 @@ final class VideoPhase6_5Tests: XCTestCase {
 
     func testClassicHiresRendersSevenPixelsPerByteFromShadowPage() {
         let memory = FlatMemoryBus()
-        memory[0x00C022] = 0x0F
+        memory[0x00C022] = 0xF0
         memory[0x002000] = 0x41
 
         let frame = IIGSVideoRenderer.renderClassicHires(from: memory)
@@ -49,7 +49,7 @@ final class VideoPhase6_5Tests: XCTestCase {
 
     func testClassicHiresUsesPageTwoWhenSelected() {
         let memory = FlatMemoryBus()
-        memory[0x00C022] = 0x0F
+        memory[0x00C022] = 0xF0
         memory[0x002000] = 0x00
         memory[0x004000] = 0x01
         memory[0x00C055] = 0
@@ -62,7 +62,7 @@ final class VideoPhase6_5Tests: XCTestCase {
 
     func testClassicHiresMixedModeDrawsBottomTextRows() {
         let memory = FlatMemoryBus()
-        memory[0x00C022] = 0x0F
+        memory[0x00C022] = 0xF0
         memory[0x00C053] = 0
         memory[0x000650] = 0xC1
 
@@ -78,7 +78,7 @@ final class VideoPhase6_5Tests: XCTestCase {
         let memory = FlatMemoryBus()
         memory[0x00C050] = 0
         memory[0x00C057] = 0
-        memory[0x00C022] = 0x0F
+        memory[0x00C022] = 0xF0
         memory[0x002000] = 0x01
 
         let frame = IIGSVideoRenderer.renderFrame(from: memory)

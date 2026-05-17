@@ -128,30 +128,46 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         XCTAssertEqual(memory[0x00C033], 0x00)
     }
 
-    func testRealTimeClockProvidesValidDefaultComplementChecksumByte() {
+    func testRealTimeClockSupportsParameterRAMWrites() {
         let memory = FlatMemoryBus()
+
+        memory[0x00C033] = 0x3F
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x78
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0xA5
+        memory[0x00C034] = 0xA0
 
         memory[0x00C033] = 0xBF
         memory[0x00C034] = 0xA0
         memory[0x00C033] = 0x78
         memory[0x00C034] = 0xA0
-        memory[0x00C033] = 0x00
+        memory[0x00C033] = 0xFF
         memory[0x00C034] = 0xE0
 
-        XCTAssertEqual(memory[0x00C033], 0x90)
+        XCTAssertEqual(memory[0x00C033], 0xA5)
     }
 
-    func testRealTimeClockProvidesBootSignatureBytes() {
+    func testRealTimeClockProvidesDisplayColorDefaults() {
         let memory = FlatMemoryBus()
 
-        memory[0x00C033] = 0xBD
+        memory[0x00C033] = 0xB8
         memory[0x00C034] = 0xA0
-        memory[0x00C033] = 0x44
+        memory[0x00C033] = 0x68
         memory[0x00C034] = 0xA0
         memory[0x00C033] = 0x00
         memory[0x00C034] = 0xE0
 
-        XCTAssertEqual(memory[0x00C033], 0xCB)
+        XCTAssertEqual(memory[0x00C033], 0x0F)
+
+        memory[0x00C033] = 0xB8
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x6C
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = 0x00
+        memory[0x00C034] = 0xE0
+
+        XCTAssertEqual(memory[0x00C033], 0x06)
     }
 
     func testLanguageCardSoftSwitchesSelectROMOrWritableRAM() throws {

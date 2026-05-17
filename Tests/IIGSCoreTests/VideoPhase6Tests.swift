@@ -79,7 +79,7 @@ final class VideoPhase6Tests: XCTestCase {
 
     func testClassicTextRendererUsesShadowPage() {
         let memory = FlatMemoryBus()
-        memory[0x00C022] = 0x0F
+        memory[0x00C022] = 0xF0
         memory[0x000400] = 0xC1
 
         let frame = IIGSVideoRenderer.renderClassicText(from: memory)
@@ -97,7 +97,8 @@ final class VideoPhase6Tests: XCTestCase {
 
         let frame = IIGSVideoRenderer.renderClassicText(from: memory)
 
-        XCTAssertEqual(memory[0x00C022], 0x0F)
+        XCTAssertEqual(memory[0x00C022], 0xF6)
+        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0x22, green: 0x22, blue: 0xFF))
         XCTAssertEqual(frame[2, 0], .white)
     }
 
@@ -114,7 +115,7 @@ final class VideoPhase6Tests: XCTestCase {
     func testClassicTextRendererTracksEightyColumnWidth() {
         let memory = FlatMemoryBus()
         memory[0x00C00D] = 0
-        memory[0x00C022] = 0x0F
+        memory[0x00C022] = 0xF0
         memory[0x000400] = 0xC1
 
         let frame = IIGSVideoRenderer.renderClassicText(from: memory)

@@ -225,7 +225,7 @@ public final class CPU65816 {
         case 0x7C:
             let base = fetch16(using: bus)
             let pointer = UInt16(base &+ registers.x)
-            registers.programCounter = read16(at: UInt32(pointer), using: bus)
+            registers.programCounter = read16(at: programAddress(pointer), using: bus)
             return 6
         case 0x7D: return accumulatorReadModify(.adc, mode: .absoluteIndexedX, using: bus, cycles: registers.accumulatorIs8Bit ? 4 : 5)
         case 0x7E: return memoryShiftRotate(.ror, mode: .absoluteIndexedX, using: bus, cycles: 7)
@@ -501,6 +501,10 @@ private extension CPU65816 {
 
     func absoluteDataAddress(_ offset: UInt16) -> UInt32 {
         (UInt32(registers.dataBank) << 16) | UInt32(offset)
+    }
+
+    func programAddress(_ offset: UInt16) -> UInt32 {
+        (UInt32(registers.programBank) << 16) | UInt32(offset)
     }
 
     func directAddress(_ offset: UInt8) -> UInt16 {
@@ -958,7 +962,7 @@ private extension CPU65816 {
         let base = fetch16(using: bus)
         let pointer = UInt16(base &+ registers.x)
         push16(registers.programCounter &- 1, using: bus)
-        registers.programCounter = read16(at: UInt32(pointer), using: bus)
+        registers.programCounter = read16(at: programAddress(pointer), using: bus)
         return 8
     }
 

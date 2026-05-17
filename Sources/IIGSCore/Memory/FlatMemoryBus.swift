@@ -13,6 +13,7 @@ public final class FlatMemoryBus: IIGSBus {
     private var realTimeClock = IIGSRealTimeClock()
 
     public private(set) var cycleCount: UInt64 = 0
+    public var traceProgramCounter: UInt32?
 
     public init(size: Int = FlatMemoryBus.fullAddressSpaceSize, scheduler: IIGSEventScheduler? = nil) {
         precondition(size > 0 && size <= FlatMemoryBus.fullAddressSpaceSize)
@@ -76,7 +77,17 @@ public final class FlatMemoryBus: IIGSBus {
     }
 
     public func setVerticalBlankInterruptPending() {
+        guard interruptState.enableRegister & IIGSInterruptState.verticalBlankMask != 0 else {
+            return
+        }
         interruptState.setVerticalBlankPending()
+    }
+
+    public func setQuarterSecondInterruptPending() {
+        guard interruptState.enableRegister & IIGSInterruptState.quarterSecondMask != 0 else {
+            return
+        }
+        interruptState.setQuarterSecondPending()
     }
 
     public func setScanlineInterruptPending() {
@@ -314,9 +325,11 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC025:
             return adbController.modifierRegister
         case 0xC026:
+            adbController.setTraceContext(traceProgramCounter.map { "PC \(hex24($0))" })
             return adbController.readCommandData()
         case 0xC027:
-            return adbController.statusRegister
+            adbController.setTraceContext(traceProgramCounter.map { "PC \(hex24($0))" })
+            return adbController.readStatusRegister()
         case 0xC029:
             return softSwitches.videoControl
         case 0xC02E:
@@ -397,8 +410,10 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC023:
             interruptState.c023EnableRegister = value
         case 0xC026:
+            adbController.setTraceContext(traceProgramCounter.map { "PC \(hex24($0))" })
             adbController.writeCommandData(value)
         case 0xC027:
+            adbController.setTraceContext(traceProgramCounter.map { "PC \(hex24($0))" })
             adbController.writeStatusControl(value)
         case 0xC029:
             softSwitches.videoControl = value
@@ -424,6 +439,8 @@ public final class FlatMemoryBus: IIGSBus {
             soundController.writePointerHigh(value)
         case 0xC041:
             interruptState.enableRegister = value
+            let disabledVideoSources = ~value & (IIGSInterruptState.verticalBlankMask | IIGSInterruptState.quarterSecondMask)
+            interruptState.clearVideoStatus(mask: disabledVideoSources)
         case 0xC047:
             interruptState.clearVideoStatus(mask: value == 0 ? 0xFF : value)
         case 0xC035:
@@ -455,6 +472,11 @@ public final class FlatMemoryBus: IIGSBus {
 
     private func statusByte(_ enabled: Bool) -> UInt8 {
         enabled ? 0x80 : 0x00
+    }
+
+    private func hex24(_ value: UInt32) -> String {
+        let text = String(value & 0x00FF_FFFF, radix: 16, uppercase: true)
+        return "$" + String(repeating: "0", count: max(0, 6 - text.count)) + text
     }
 
     private func applyClassicSoftSwitch(_ lowAddress: UInt16) {
@@ -577,20 +599,29 @@ public final class FlatMemoryBus: IIGSBus {
 }
 
 private struct IIGSRealTimeClock {
+    private enum TransactionState {
+        case receiveCommand
+        case receiveBRAMAddress(read: Bool)
+        case readBRAM
+        case writeBRAM
+        case readClock(index: UInt32)
+        case writeClock(index: UInt32)
+        case registerWrite
+    }
+
     private var dataRegister: UInt8 = 0
     private var controlRegister: UInt8 = 0
-    private var commandBuffer: [UInt8] = []
+    private var state: TransactionState = .receiveCommand
+    private var bramIndex: UInt8 = 0
+    private var secondsSince1904: UInt32 = 0
     private var parameterRAM: [UInt8] = {
         var bytes = Array(repeating: UInt8(0), count: 256)
-        // ROM 01 startup expects a valid battery-RAM signature and checksum.
-        bytes[0xB1] = 0xCB
-        bytes[0xB2] = 0xD2
-        bytes[0xB3] = 0xC7
-        bytes[0xB4] = 0xC2
-        bytes[0xFC] = 0x3A
-        bytes[0xFD] = 0xB2
-        bytes[0xFE] = 0x90
-        bytes[0xFF] = 0x18
+        // These are the control-panel display defaults copied by ROM startup
+        // into E1/02C0: white text, medium-blue background and border.
+        bytes[0x1A] = 0x0F
+        bytes[0x1B] = 0x06
+        bytes[0x1C] = 0x06
+        bytes[0x20] = 0x01
         return bytes
     }()
 
@@ -612,36 +643,106 @@ private struct IIGSRealTimeClock {
             return
         }
 
-        if value & 0x40 == 0 {
-            appendCommandByte(dataRegister)
-        } else {
-            dataRegister = parameterRAM[Int(decodedCommandAddress() ?? 0)]
-            commandBuffer.removeAll(keepingCapacity: true)
+        guard value & 0x20 != 0 else {
+            state = .receiveCommand
+            return
+        }
+
+        let isReadOperation = value & 0x40 != 0
+        switch state {
+        case .receiveCommand:
+            dispatchCommand(dataRegister)
+        case let .receiveBRAMAddress(read):
+            bramIndex |= (dataRegister >> 2) & 0x1F
+            state = read ? .readBRAM : .writeBRAM
+        case .readBRAM:
+            if isReadOperation {
+                dataRegister = parameterRAM[Int(bramIndex)]
+                state = .receiveCommand
+            } else {
+                dispatchCommand(dataRegister)
+            }
+        case .writeBRAM:
+            if !isReadOperation {
+                parameterRAM[Int(bramIndex)] = dataRegister
+                state = .receiveCommand
+            }
+        case let .readClock(index):
+            if isReadOperation {
+                dataRegister = readClockByte(index: index)
+                state = .receiveCommand
+            } else {
+                dispatchCommand(dataRegister)
+            }
+        case let .writeClock(index):
+            if !isReadOperation {
+                writeClockByte(dataRegister, index: index)
+                state = .receiveCommand
+            }
+        case .registerWrite:
+            break
         }
     }
 
     mutating func resetTransientState() {
         dataRegister = 0
         controlRegister = 0
-        commandBuffer.removeAll(keepingCapacity: true)
+        state = .receiveCommand
+        bramIndex = 0
     }
 
-    private mutating func appendCommandByte(_ value: UInt8) {
-        commandBuffer.append(value)
-        if commandBuffer.count > 2 {
-            commandBuffer.removeFirst(commandBuffer.count - 2)
+    private mutating func dispatchCommand(_ value: UInt8) {
+        let command = (value >> 3) & 0x0F
+        let option = value & 0x07
+        let commandRequestsRead = value & 0x80 != 0
+
+        switch command {
+        case 0x00:
+            let index = UInt32(option)
+            state = commandRequestsRead ? .readClock(index: index) : .writeClock(index: index)
+        case 0x01:
+            let index = UInt32(option) | 0x8000_0000
+            state = commandRequestsRead ? .readClock(index: index) : .writeClock(index: index)
+        case 0x06:
+            state = .registerWrite
+        case 0x07:
+            bramIndex = option << 5
+            state = .receiveBRAMAddress(read: commandRequestsRead)
+        default:
+            state = .receiveCommand
         }
     }
 
-    private func decodedCommandAddress() -> UInt8? {
-        guard commandBuffer.count == 2 else {
-            return nil
+    private func readClockByte(index: UInt32) -> UInt8 {
+        let option = UInt8(index & 0xFF)
+        guard option & 0x01 != 0 else {
+            return 0
         }
-        let high = commandBuffer[0]
-        let low = commandBuffer[1]
-        guard high & 0x38 == 0x38 else {
-            return nil
+        if index & 0x8000_0000 != 0 {
+            return option & 0x04 != 0
+                ? UInt8((secondsSince1904 >> 24) & 0xFF)
+                : UInt8((secondsSince1904 >> 16) & 0xFF)
         }
-        return ((high & 0x07) << 5) | ((low >> 2) & 0x1F)
+        return option & 0x04 != 0
+            ? UInt8((secondsSince1904 >> 8) & 0xFF)
+            : UInt8(secondsSince1904 & 0xFF)
+    }
+
+    private mutating func writeClockByte(_ value: UInt8, index: UInt32) {
+        let option = UInt8(index & 0xFF)
+        guard option & 0x01 != 0 else {
+            return
+        }
+        if index & 0x8000_0000 != 0 {
+            if option & 0x04 != 0 {
+                secondsSince1904 = (secondsSince1904 & 0x00FF_FFFF) | (UInt32(value) << 24)
+            } else {
+                secondsSince1904 = (secondsSince1904 & 0xFF00_FFFF) | (UInt32(value) << 16)
+            }
+        } else if option & 0x04 != 0 {
+            secondsSince1904 = (secondsSince1904 & 0xFFFF_00FF) | (UInt32(value) << 8)
+        } else {
+            secondsSince1904 = (secondsSince1904 & 0xFFFF_FF00) | UInt32(value)
+        }
     }
 }

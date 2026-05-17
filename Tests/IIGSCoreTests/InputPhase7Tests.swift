@@ -70,8 +70,67 @@ final class InputPhase7Tests: XCTestCase {
         memory[0x00C026] = 0x99
         memory[0x00C026] = 0x09
         memory[0x00C026] = 0x42
+        memory[0x00C026] = 0x00
 
         XCTAssertEqual(memory[0x00C026], 0x99)
+    }
+
+    func testADBROMStyleSyncAndVersionHandshakeUseCommandHeaderPhase() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C026] = 0x07
+
+        XCTAssertEqual(memory[0x00C027] & 0x01, 0x00, "The framework-level ADB controller consumes command bytes synchronously.")
+        XCTAssertEqual(memory[0x00C026], 0x00)
+        XCTAssertEqual(memory[0x00C027] & 0x01, 0x00)
+
+        memory[0x00C026] = 0x03
+        memory[0x00C026] = 0x11
+        memory[0x00C026] = 0x22
+        memory[0x00C026] = 0x33
+        memory[0x00C026] = 0x0A
+
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x20)
+        XCTAssertEqual(memory[0x00C026], 0x03)
+
+        memory[0x00C026] = 0x0D
+
+        XCTAssertEqual(memory[0x00C026], 0x05)
+    }
+
+    func testADBROMStartupReadDataCommandsReturnADBROMChecksumBytes() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C026] = 0x0C
+        XCTAssertEqual(memory[0x00C026], 0x00)
+
+        memory[0x00C026] = 0x09
+        memory[0x00C026] = 0x00
+        memory[0x00C026] = 0x1F
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x20)
+        XCTAssertEqual(memory[0x00C026], 0x72)
+
+        memory[0x00C026] = 0x09
+        memory[0x00C026] = 0x01
+        memory[0x00C026] = 0x1F
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x20)
+        XCTAssertEqual(memory[0x00C026], 0xF7)
+
+        memory[0x00C026] = 0x07
+        memory[0x00C026] = 0x00
+        memory[0x00C026] = 0x32
+        memory[0x00C026] = 0x00
+        memory[0x00C026] = 0x07
+
+        memory[0x00C026] = 0x0E
+        XCTAssertEqual(memory[0x00C026], 0x00, "ROM command glue consumes a leading status byte before the list payload.")
+        XCTAssertEqual(memory[0x00C026], 0x01, "Available character sets are returned as a count followed by IDs.")
+        XCTAssertEqual(memory[0x00C026], 0x03)
+
+        memory[0x00C026] = 0x0F
+        XCTAssertEqual(memory[0x00C026], 0x00, "ROM command glue consumes a leading status byte before the list payload.")
+        XCTAssertEqual(memory[0x00C026], 0x01, "Available keyboard layouts are returned as a count followed by IDs.")
+        XCTAssertEqual(memory[0x00C026], 0x02)
     }
 
     func testKeyboardTalkRegisterZeroReturnsQueuedKeyEvents() {
@@ -146,5 +205,25 @@ final class InputPhase7Tests: XCTestCase {
 
         memory[0x00C026] = 0x5C
         XCTAssertEqual(memory[0x00C026], 0x12)
+    }
+
+    func testROMStyleDevicePollRegisterThreeReturnsControllerHeaderAndDeviceInfo() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C026] = 0xF2
+
+        XCTAssertEqual(memory[0x00C026], 0x81)
+        XCTAssertEqual(memory[0x00C026], 0x02)
+        XCTAssertEqual(memory[0x00C026], 0x02)
+    }
+
+    func testROMStyleDeviceCommandsCanReturnEmptyControllerResponse() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C026] = 0x73
+
+        XCTAssertEqual(memory[0x00C027] & 0x21, 0x20)
+        XCTAssertEqual(memory[0x00C026], 0x80)
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x00)
     }
 }

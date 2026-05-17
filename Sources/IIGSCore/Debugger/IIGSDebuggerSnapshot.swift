@@ -131,6 +131,7 @@ public struct IIGSDebuggerHardwareSnapshot: Equatable, Sendable {
     public let verticalCounter: UInt8
     public let horizontalCounter: UInt8
     public let keyboardModifiers: UInt8
+    public let adbTrace: [String]
 
     public init(memory: FlatMemoryBus) {
         self.stateRegister = memory.softSwitches.stateRegister
@@ -142,6 +143,7 @@ public struct IIGSDebuggerHardwareSnapshot: Equatable, Sendable {
         self.verticalCounter = IIGSVideoTiming.verticalCounter(atCycle: memory.cycleCount)
         self.horizontalCounter = IIGSVideoTiming.horizontalCounter(atCycle: memory.cycleCount)
         self.keyboardModifiers = memory.adbController.modifierRegister
+        self.adbTrace = memory.adbController.trace
     }
 }
 
@@ -170,6 +172,7 @@ public struct IIGSDebuggerSnapshot: Equatable, Sendable {
     public let interrupts: IIGSDebuggerInterruptSnapshot
     public let hardware: IIGSDebuggerHardwareSnapshot
     public let pendingEvents: [IIGSDebuggerEventSnapshot]
+    public let recentProgramCounters: [UInt32]
 
     public init(machine: IIGSMachine) {
         self.registers = IIGSDebuggerRegisterSnapshot(registers: machine.cpu.registers)
@@ -180,6 +183,7 @@ public struct IIGSDebuggerSnapshot: Equatable, Sendable {
         self.interrupts = IIGSDebuggerInterruptSnapshot(interruptState: machine.memory.interruptState)
         self.hardware = IIGSDebuggerHardwareSnapshot(memory: machine.memory)
         self.pendingEvents = machine.scheduler.pendingEvents().prefix(16).map(IIGSDebuggerEventSnapshot.init(event:))
+        self.recentProgramCounters = machine.recentProgramCounters
     }
 }
 

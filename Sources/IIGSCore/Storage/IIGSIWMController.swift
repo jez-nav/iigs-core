@@ -31,6 +31,7 @@ public final class IIGSIWMController {
     public private(set) var q6 = false
     public private(set) var q7 = false
     public private(set) var driveControlRegister: UInt8 = 0
+    public private(set) var modeRegister: UInt8 = 0
     public private(set) var threePointFiveMotorOn = false
     private var writeModePrimed = false
 
@@ -46,6 +47,7 @@ public final class IIGSIWMController {
         q6 = false
         q7 = false
         driveControlRegister = 0
+        modeRegister = 0
         threePointFiveMotorOn = false
         writeModePrimed = false
     }
@@ -93,11 +95,15 @@ public final class IIGSIWMController {
         applySwitchLatch(normalizedOffset)
 
         if isWrite {
-            if q6, q7, motorOn, !is3_5Mode {
-                if writeModePrimed {
-                    writeData(value)
+            if q6, q7 {
+                if motorOn, !is3_5Mode {
+                    if writeModePrimed {
+                        writeData(value)
+                    } else {
+                        writeModePrimed = true
+                    }
                 } else {
-                    writeModePrimed = true
+                    modeRegister = value & 0x1F
                 }
             }
             return value
@@ -144,7 +150,11 @@ public final class IIGSIWMController {
 
     private func readLatchValue() -> UInt8 {
         if q6, !q7 {
-            return selectedDrive.media?.isWriteProtected == true ? 0x80 : 0x00
+            var status = modeRegister & 0x1F
+            if selectedDrive.media?.isWriteProtected == true {
+                status |= 0x80
+            }
+            return status
         }
 
         if q7, !q6 {

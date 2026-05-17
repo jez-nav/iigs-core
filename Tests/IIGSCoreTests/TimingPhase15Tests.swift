@@ -39,9 +39,20 @@ final class TimingPhase15Tests: XCTestCase {
         machine.advanceCycles(vblStart - Int(machine.memory.cycleCount))
 
         XCTAssertEqual(machine.memory[0x00C046] & IIGSInterruptState.verticalBlankMask, IIGSInterruptState.verticalBlankMask)
+        XCTAssertEqual(machine.memory[0x00C046] & 0x80, 0, "ROM 01 branches into diagnostics if $C046 exposes VBL on the sign bit.")
         XCTAssertTrue(machine.memory.irqLineAsserted)
 
         machine.memory[0x00C047] = IIGSInterruptState.verticalBlankMask
+
+        XCTAssertEqual(machine.memory[0x00C046] & IIGSInterruptState.verticalBlankMask, 0)
+        XCTAssertFalse(machine.memory.irqLineAsserted)
+    }
+
+    func testVBLDoesNotAppearInC046UntilEnabled() {
+        let machine = IIGSMachine()
+        let vblStart = IIGSVideoTiming.classicVisibleLines * IIGSVideoTiming.cyclesPerLine
+
+        machine.advanceCycles(vblStart - Int(machine.memory.cycleCount))
 
         XCTAssertEqual(machine.memory[0x00C046] & IIGSInterruptState.verticalBlankMask, 0)
         XCTAssertFalse(machine.memory.irqLineAsserted)

@@ -28,9 +28,20 @@ private struct HardwareInspector: View {
             row("SHDW", hex(hardware.shadowInhibit, width: 2))
             row("SPEED", hex(hardware.speedRegister, width: 2))
             row("VIDEO", hex(hardware.videoControl, width: 2))
+            row("TXT", hex(hardware.textColor, width: 2))
             row("VC/HC", "\(hex(hardware.verticalCounter, width: 2)) / \(hex(hardware.horizontalCounter, width: 2))")
             row("ADB MOD", hex(hardware.keyboardModifiers, width: 2))
         }
+        VStack(alignment: .leading, spacing: 2) {
+            Text("ADB")
+                .foregroundStyle(.secondary)
+            ForEach(hardware.adbTrace.suffix(8), id: \.self) { line in
+                Text(line)
+                    .lineLimit(1)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(.top, 4)
     }
 
     private func row(_ name: String, _ value: String) -> some View {

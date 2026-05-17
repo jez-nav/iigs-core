@@ -1,6 +1,6 @@
 public struct IIGSInterruptState: Equatable, Sendable {
-    public static let verticalBlankMask: UInt8 = 0x80
-    public static let quarterSecondMask: UInt8 = 0x40
+    public static let verticalBlankMask: UInt8 = 0x08
+    public static let quarterSecondMask: UInt8 = 0x10
     public static let c023AnyPendingMask: UInt8 = 0x80
     public static let c023OneSecondPendingMask: UInt8 = 0x40
     public static let c023ScanlinePendingMask: UInt8 = 0x20

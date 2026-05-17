@@ -105,6 +105,16 @@ final class StoragePhase9Tests: XCTestCase {
         XCTAssertEqual(memory[0x00C0ED], 0x80)
     }
 
+    func testIWMModeRegisterIsReflectedThroughStatusRead() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C0ED] = 0 // Q6 high
+        memory[0x00C0EF] = 0x0F // Q7 high, drive off: write IWM mode
+
+        XCTAssertEqual(memory.iwmController.modeRegister, 0x0F)
+        XCTAssertEqual(memory[0x00C0EE] & 0x1F, 0x0F) // Q7 low, Q6 high: read status/mode
+    }
+
     func testIWMWriteModeMutatesWritableRawTrack() throws {
         let memory = FlatMemoryBus()
         let media = try IIGSFloppyMedia(raw5_25: Array(repeating: 0, count: IIGSFloppyMedia.raw5_25ByteCount))

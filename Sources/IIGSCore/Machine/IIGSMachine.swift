@@ -36,6 +36,7 @@ public final class IIGSMachine {
     public let smartPortController = IIGSSmartPortController()
     public private(set) var lastResetKind: IIGSResetKind?
     public private(set) var servicedDeviceEvents: [IIGSFiredEvent] = []
+    public private(set) var recentProgramCounters: [UInt32] = []
 
     public init(memorySize: Int = FlatMemoryBus.fullAddressSpaceSize, romImage: IIGSROMImage? = nil) {
         let scheduler = IIGSEventScheduler()
@@ -61,6 +62,7 @@ public final class IIGSMachine {
         scheduler.reset(to: 0)
         scheduleVideoEvents()
         memory.resetHardware(kind)
+        recentProgramCounters.removeAll(keepingCapacity: true)
         cpu.reset(using: memory)
         serviceScheduledEvents()
     }
@@ -133,6 +135,10 @@ public final class IIGSMachine {
     @discardableResult
     public func step() throws -> Int {
         refreshIRQLine()
+        let address = currentProgramAddress
+        recordProgramCounter(address)
+        memory.traceProgramCounter = address
+        defer { memory.traceProgramCounter = nil }
         let cycles = try cpu.step(using: memory)
         serviceScheduledEvents()
         return cycles
@@ -240,6 +246,13 @@ public final class IIGSMachine {
             stopReason: stopReason,
             finalAddress: currentProgramAddress
         )
+    }
+
+    private func recordProgramCounter(_ address: UInt32) {
+        recentProgramCounters.append(address & 0x00FF_FFFF)
+        if recentProgramCounters.count > 64 {
+            recentProgramCounters.removeFirst(recentProgramCounters.count - 64)
+        }
     }
 
     private func scheduleVideoEvents() {

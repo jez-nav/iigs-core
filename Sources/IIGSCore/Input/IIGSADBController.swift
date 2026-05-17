@@ -18,16 +18,22 @@ public final class IIGSADBController {
     public private(set) var mouseX: Int16 = 0
     public private(set) var mouseY: Int16 = 0
     public private(set) var mouseButtonDown = false
+    public private(set) var trace: [String] = []
 
+    private var traceContext: String?
     private var keyboardLatch: UInt8 = 0
     private var keyboardStrobe = false
+    private var responseHeader: UInt8?
     private var responseQueue: [UInt8] = []
     private var keyboardEvents: [UInt8] = []
     private var mouseBytes: [UInt8] = []
     private var adbRAM = Array(repeating: UInt8(0), count: 256)
     private var modeByte: UInt8 = 0
     private var configurationByte: UInt8 = 0
+    private var configurationBytes = Array(repeating: UInt8(0), count: 3)
+    private var errorByte: UInt8 = 0
     private var statusControl: UInt8 = 0
+    private var commandFull = false
     private var keyboardAddress: UInt8 = 2
     private var mouseAddress: UInt8 = 3
     private var pendingCommand: PendingCommand?
@@ -48,15 +54,21 @@ public final class IIGSADBController {
         if !mouseBytes.isEmpty {
             status |= 0x80
         }
-        if !responseQueue.isEmpty {
+        if responseHeader != nil || !responseQueue.isEmpty {
             status |= 0x20
         }
         if !keyboardEvents.isEmpty {
             status |= 0x08
         }
-        if pendingCommand != nil {
+        if commandFull {
             status |= 0x01
         }
+        return status
+    }
+
+    func readStatusRegister() -> UInt8 {
+        let status = statusRegister
+        traceEvent("R C027 \(hex(status))")
         return status
     }
 
@@ -70,6 +82,7 @@ public final class IIGSADBController {
     }
 
     public func reset() {
+        responseHeader = nil
         responseQueue.removeAll()
         keyboardEvents.removeAll()
         mouseBytes.removeAll()
@@ -82,9 +95,13 @@ public final class IIGSADBController {
         mouseButtonDown = false
         modeByte = 0
         configurationByte = 0
+        configurationBytes = Array(repeating: UInt8(0), count: 3)
+        errorByte = 0
         statusControl = 0
+        commandFull = false
         keyboardAddress = 2
         mouseAddress = 3
+        trace.removeAll()
     }
 
     public func injectAppleIIKey(_ ascii: UInt8, modifiers: IIGSADBModifiers = []) {
@@ -131,44 +148,86 @@ public final class IIGSADBController {
     }
 
     func readCommandData() -> UInt8 {
+        commandFull = false
+        if let header = responseHeader {
+            responseHeader = nil
+            traceEvent("R C026 header \(hex(header))")
+            return header
+        }
         guard !responseQueue.isEmpty else {
+            traceEvent("R C026 empty 00")
             return 0
         }
-        return responseQueue.removeFirst()
+        let value = responseQueue.removeFirst()
+        traceEvent("R C026 data \(hex(value))")
+        return value
     }
 
     func writeCommandData(_ value: UInt8) {
+        commandFull = true
+        traceEvent("W C026 \(hex(value))")
         if let pendingCommand {
             continuePendingCommand(pendingCommand, value: value)
+            commandFull = false
             return
         }
 
+        responseHeader = nil
         switch value {
-        case 0x00:
-            resetController()
         case 0x01:
-            self.pendingCommand = .setModes
+            abortCommand()
         case 0x02:
-            self.pendingCommand = .clearModes
+            resetKeyboard()
         case 0x03:
-            self.pendingCommand = .setConfiguration
+            flushKeyboard()
+        case 0x04:
+            pendingCommand = .setModes
+        case 0x05:
+            self.pendingCommand = .clearModes
+        case 0x06:
+            pendingCommand = .setConfiguration([])
+        case 0x07:
+            pendingCommand = .sync(expectedCount: revision >= 6 ? 8 : 4, bytes: [])
         case 0x08:
-            self.pendingCommand = .writeRAMAddress
+            pendingCommand = .writeRAM([])
         case 0x09:
-            self.pendingCommand = .readRAMAddress
+            pendingCommand = .readMemory([])
         case 0x0A:
-            responseQueue.append(modeByte)
+            queueResult([modeByte])
         case 0x0B:
-            responseQueue.append(configurationByte)
+            queueResult([configurationByte])
+        case 0x0C:
+            queueResult([errorByte])
+            errorByte = 0
         case 0x0D:
-            responseQueue.append(revision)
+            queueResult([revision])
+        case 0x0E:
+            queueResult([0x00, 0x01, configuredCharacterSet])
+        case 0x0F:
+            queueResult([0x00, 0x01, configuredKeyboardLayout])
+        case 0x10:
+            resetController()
+        case 0x11:
+            pendingCommand = .sendKeyCode
+        case 0x12:
+            pendingCommand = .discard(expectedCount: 2, bytes: [])
+        case 0x13:
+            pendingCommand = .discard(expectedCount: 2, bytes: [])
+        case 0x40:
+            resetController()
         default:
             handleADBDeviceCommand(value)
         }
+        commandFull = false
     }
 
     func writeStatusControl(_ value: UInt8) {
         statusControl = value & 0x56
+        traceEvent("W C027 \(hex(value)) -> \(hex(statusControl))")
+    }
+
+    func setTraceContext(_ context: String?) {
+        traceContext = context
     }
 
     private func continuePendingCommand(_ command: PendingCommand, value: UInt8) {
@@ -179,17 +238,47 @@ public final class IIGSADBController {
         case .clearModes:
             modeByte &= ~value
             pendingCommand = nil
-        case .setConfiguration:
-            configurationByte = value
+        case .setConfiguration(var bytes):
+            bytes.append(value)
+            if bytes.count >= 3 {
+                configurationBytes = Array(bytes.prefix(3))
+                configurationByte = configurationBytes[0]
+                pendingCommand = nil
+            } else {
+                pendingCommand = .setConfiguration(bytes)
+            }
+        case .sync(let expectedCount, var bytes):
+            bytes.append(value)
+            if bytes.count >= expectedCount {
+                modeByte = bytes[0]
+                configurationBytes = Array(bytes.prefix(3))
+                configurationByte = configurationBytes[0]
+                pendingCommand = nil
+            } else {
+                pendingCommand = .sync(expectedCount: expectedCount, bytes: bytes)
+            }
+        case .readMemory(var bytes):
+            bytes.append(value)
+            if bytes.count >= 2 {
+                queueResult([readADBMemory(address: bytes[0], page: bytes[1])])
+                pendingCommand = nil
+            } else {
+                pendingCommand = .readMemory(bytes)
+            }
+        case .writeRAM(var bytes):
+            bytes.append(value)
+            if bytes.count >= 2 {
+                adbRAM[Int(bytes[0])] = bytes[1]
+                pendingCommand = nil
+            } else {
+                pendingCommand = .writeRAM(bytes)
+            }
+        case .sendKeyCode:
+            queueKeyboardEvent(keyCode: value)
             pendingCommand = nil
-        case .readRAMAddress:
-            responseQueue.append(adbRAM[Int(value)])
-            pendingCommand = nil
-        case .writeRAMAddress:
-            pendingCommand = .writeRAMValue(address: value)
-        case .writeRAMValue(let address):
-            adbRAM[Int(address)] = value
-            pendingCommand = nil
+        case .discard(let expectedCount, var bytes):
+            bytes.append(value)
+            pendingCommand = bytes.count >= expectedCount ? nil : .discard(expectedCount: expectedCount, bytes: bytes)
         case .listenRegister3(let deviceAddress):
             pendingCommand = .listenRegister3Value(deviceAddress: deviceAddress, firstByte: value)
         case .listenRegister3Value(let deviceAddress, _):
@@ -199,6 +288,13 @@ public final class IIGSADBController {
     }
 
     private func handleADBDeviceCommand(_ value: UInt8) {
+        let controllerCommand = value & 0xF0
+        let classicADBCommand = value & 0x0C
+        if controllerCommand >= 0x50 && classicADBCommand != 0x08 && classicADBCommand != 0x0C {
+            handleControllerDeviceCommand(value)
+            return
+        }
+
         let deviceAddress = (value >> 4) & 0x0F
         let command = value & 0x0C
         let register = value & 0x03
@@ -210,6 +306,28 @@ public final class IIGSADBController {
             if register == 3 {
                 pendingCommand = .listenRegister3(deviceAddress: deviceAddress)
             }
+        default:
+            break
+        }
+    }
+
+    private func handleControllerDeviceCommand(_ value: UInt8) {
+        let command = value & 0xF0
+        let deviceAddress = value & 0x0F
+
+        switch command {
+        case 0x70:
+            queueDeviceResponse([])
+        case 0x60:
+            queueDeviceResponse([])
+        case 0x50:
+            queueDeviceResponse([])
+        case 0xB0:
+            pendingCommand = .listenRegister3(deviceAddress: deviceAddress)
+        case 0xC0:
+            queueDeviceResponse(registerZeroBytes(for: deviceAddress))
+        case 0xF0:
+            queueDeviceResponse(registerThreeBytes(for: deviceAddress))
         default:
             break
         }
@@ -250,6 +368,30 @@ public final class IIGSADBController {
         }
     }
 
+    private func registerZeroBytes(for deviceAddress: UInt8) -> [UInt8] {
+        if deviceAddress == keyboardAddress {
+            let first = keyboardEvents.isEmpty ? UInt8(0xFF) : keyboardEvents.removeFirst()
+            let second = keyboardEvents.isEmpty ? UInt8(0xFF) : keyboardEvents.removeFirst()
+            return [first, second]
+        }
+        if deviceAddress == mouseAddress {
+            let bytes = Array(mouseBytes.prefix(2))
+            mouseBytes.removeFirst(min(2, mouseBytes.count))
+            return bytes + Array(repeating: UInt8(0), count: max(0, 2 - bytes.count))
+        }
+        return []
+    }
+
+    private func registerThreeBytes(for deviceAddress: UInt8) -> [UInt8] {
+        if deviceAddress == keyboardAddress {
+            return [0x02, keyboardAddress]
+        }
+        if deviceAddress == mouseAddress {
+            return [0x01, mouseAddress]
+        }
+        return []
+    }
+
     private func updateDeviceAddress(from oldAddress: UInt8, register3LowByte: UInt8) {
         let newAddress = register3LowByte & 0x0F
         guard newAddress > 0 else {
@@ -267,13 +409,116 @@ public final class IIGSADBController {
         reset()
     }
 
+    private func resetKeyboard() {
+        flushKeyboard()
+        modifierRegister = 0
+        commandFull = false
+    }
+
+    private func flushKeyboard() {
+        keyboardEvents.removeAll()
+        keyboardLatch = 0
+        keyboardStrobe = false
+        commandFull = false
+    }
+
+    private func abortCommand() {
+        responseHeader = nil
+        responseQueue.removeAll()
+        pendingCommand = nil
+        commandFull = false
+    }
+
+    private func readADBMemory(address: UInt8, page: UInt8) -> UInt8 {
+        if page == 0 {
+            switch address {
+            case 0xE2:
+                return 0x06
+            case 0xE8:
+                var value: UInt8 = 0
+                if modifierRegister & IIGSADBModifiers.command.rawValue != 0 {
+                    value |= 0x20
+                }
+                if modifierRegister & IIGSADBModifiers.option.rawValue != 0 {
+                    value |= 0x10
+                }
+                return value
+            default:
+                return adbRAM[Int(address)]
+            }
+        }
+
+        let wrappedPage = page & 0x1F
+        guard wrappedPage == 0x1F else {
+            return 0
+        }
+        switch address {
+        case 0x00:
+            return 0x72
+        case 0x01:
+            return revision >= 6 ? 0x26 : 0xF7
+        default:
+            return 0
+        }
+    }
+
+    private var keyboardSetupByte: UInt8 {
+        configurationBytes.count > 1 ? configurationBytes[1] : configurationByte
+    }
+
+    private var configuredCharacterSet: UInt8 {
+        (keyboardSetupByte >> 4) & 0x0F
+    }
+
+    private var configuredKeyboardLayout: UInt8 {
+        keyboardSetupByte & 0x0F
+    }
+
+    private func queueResult(_ bytes: [UInt8]) {
+        commandFull = false
+        responseHeader = nil
+        responseQueue = bytes
+        traceEvent("Q result \(bytes.map(hex).joined(separator: " "))")
+    }
+
+    private func queueDeviceResponse(_ bytes: [UInt8]) {
+        commandFull = false
+        guard !bytes.isEmpty else {
+            responseHeader = 0x80
+            responseQueue.removeAll()
+            traceEvent("Q 80")
+            return
+        }
+        responseHeader = 0x80 | UInt8(max(0, bytes.count - 1) & 0x07)
+        responseQueue = bytes
+        traceEvent("Q \(hex(responseHeader ?? 0)) \(bytes.map(hex).joined(separator: " "))")
+    }
+
+    private func traceEvent(_ message: String) {
+        let contextualMessage = traceContext.map { "\($0) \(message)" } ?? message
+        if message.hasPrefix("R C027"), trace.last == contextualMessage {
+            return
+        }
+        trace.append(contextualMessage)
+        if trace.count > 2_048 {
+            trace.removeFirst(trace.count - 2_048)
+        }
+    }
+
+    private func hex(_ value: UInt8) -> String {
+        let text = String(value, radix: 16, uppercase: true)
+        return String(repeating: "0", count: max(0, 2 - text.count)) + text
+    }
+
     private enum PendingCommand {
         case setModes
         case clearModes
-        case setConfiguration
-        case readRAMAddress
-        case writeRAMAddress
-        case writeRAMValue(address: UInt8)
+        case setConfiguration([UInt8])
+        case sync(expectedCount: Int, bytes: [UInt8])
+        case readMemory([UInt8])
+        case writeRAM([UInt8])
+        case sendKeyCode
+        case discard(expectedCount: Int, bytes: [UInt8])
         case listenRegister3(deviceAddress: UInt8)
         case listenRegister3Value(deviceAddress: UInt8, firstByte: UInt8)
     }

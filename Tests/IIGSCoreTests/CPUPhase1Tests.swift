@@ -298,6 +298,57 @@ final class CPUPhase1Tests: XCTestCase {
         XCTAssertEqual(machine.cpu.registers.accumulator & 0x00FF, 0x55)
     }
 
+    func testPhase2JSRAbsoluteIndexedIndirectReadsPointerFromProgramBank() throws {
+        let machine = IIGSMachine()
+        machine.memory.load([
+            0xA2, 0x02,       // LDX #$02
+            0xFC, 0x00, 0x04, // JSR ($0400,X)
+            0xA9, 0x55,       // LDA #$55
+        ], at: 0x010200)
+        machine.memory[0x010402] = 0x00
+        machine.memory[0x010403] = 0x06
+        machine.memory.load([
+            0xA9, 0xAA, // LDA #$AA
+            0x60,       // RTS
+        ], at: 0x010600)
+        machine.reset()
+        machine.cpu.updateRegisters {
+            $0.programBank = 0x01
+            $0.programCounter = 0x0200
+        }
+
+        try machine.run(instructionLimit: 5)
+
+        XCTAssertEqual(machine.cpu.registers.programBank, 0x01)
+        XCTAssertEqual(machine.cpu.registers.programCounter, 0x0207)
+        XCTAssertEqual(machine.cpu.registers.accumulator & 0x00FF, 0x55)
+    }
+
+    func testPhase2JMPAbsoluteIndexedIndirectReadsPointerFromProgramBank() throws {
+        let machine = IIGSMachine()
+        machine.memory.load([
+            0xA2, 0x02,       // LDX #$02
+            0x7C, 0x00, 0x04, // JMP ($0400,X)
+            0xA9, 0x11,       // LDA #$11; skipped when the vector is read from bank 1
+        ], at: 0x010200)
+        machine.memory[0x010402] = 0x00
+        machine.memory[0x010403] = 0x06
+        machine.memory.load([
+            0xA9, 0x42, // LDA #$42
+        ], at: 0x010600)
+        machine.reset()
+        machine.cpu.updateRegisters {
+            $0.programBank = 0x01
+            $0.programCounter = 0x0200
+        }
+
+        try machine.run(instructionLimit: 3)
+
+        XCTAssertEqual(machine.cpu.registers.programBank, 0x01)
+        XCTAssertEqual(machine.cpu.registers.programCounter, 0x0602)
+        XCTAssertEqual(machine.cpu.registers.accumulator & 0x00FF, 0x42)
+    }
+
     func testPhase2NativeIRQStacksFullFrameAndRTIRestoresIt() throws {
         let machine = machineWithProgram([
             0x18, // CLC

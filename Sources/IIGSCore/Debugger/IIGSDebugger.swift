@@ -712,7 +712,9 @@ public final class IIGSDebuggerSession {
             "flags=N\(bit(snapshot.flags.negative)) V\(bit(snapshot.flags.overflow)) M\(bit(snapshot.flags.accumulator8Bit)) X\(bit(snapshot.flags.index8Bit)) D\(bit(snapshot.flags.decimal)) I\(bit(snapshot.flags.interruptDisable)) Z\(bit(snapshot.flags.zero)) C\(bit(snapshot.flags.carry))",
             "status=RDY\(bit(snapshot.status.ready)) IRQ\(bit(snapshot.status.irqPending)) NMI\(bit(snapshot.status.nmiPending)) WAI\(bit(snapshot.status.waiting)) STP\(bit(snapshot.status.stopped))",
             "timing=cycles:\(snapshot.timing.cycles) line:\(snapshot.timing.videoLine) dot:\(snapshot.timing.videoCycleInLine) frameCycle:\(snapshot.timing.videoFrameCycle) vbl:\(bit(snapshot.timing.inVerticalBlank))",
-            "hardware=state:\(formatByte(snapshot.hardware.stateRegister)) shadow:\(formatByte(snapshot.hardware.shadowInhibit)) speed:\(formatByte(snapshot.hardware.speedRegister)) video:\(formatByte(snapshot.hardware.videoControl)) vc:\(formatByte(snapshot.hardware.verticalCounter)) hc:\(formatByte(snapshot.hardware.horizontalCounter)) adbmod:\(formatByte(snapshot.hardware.keyboardModifiers))",
+            "hardware=state:\(formatByte(snapshot.hardware.stateRegister)) shadow:\(formatByte(snapshot.hardware.shadowInhibit)) speed:\(formatByte(snapshot.hardware.speedRegister)) video:\(formatByte(snapshot.hardware.videoControl)) text:\(formatByte(snapshot.hardware.textColor)) vc:\(formatByte(snapshot.hardware.verticalCounter)) hc:\(formatByte(snapshot.hardware.horizontalCounter)) adbmod:\(formatByte(snapshot.hardware.keyboardModifiers))",
+            "adb=\(snapshot.hardware.adbTrace.joined(separator: " | "))",
+            "recentPC=\(snapshot.recentProgramCounters.suffix(16).map(formatAddress).joined(separator: " "))",
             "events=pending:\(machine.scheduler.pendingEvents().count) serviced:\(machine.servicedDeviceEvents.count)"
         ].joined(separator: "\n")
     }

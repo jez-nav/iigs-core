@@ -123,8 +123,8 @@ public enum IIGSVideoRenderer {
     public static func renderClassicHires(from memory: FlatMemoryBus) -> IIGSVideoFrame {
         var frame = blankFrame(width: classicGraphicsWidth, height: classicGraphicsHeight)
         let pageBase: UInt32 = memory.softSwitches.page2 ? 0xE04000 : 0xE02000
-        let foreground = classicColor(memory.softSwitches.textColor & 0x0F)
-        let background = classicColor(memory.softSwitches.textColor >> 4)
+        let foreground = classicColor(memory.softSwitches.textColor >> 4)
+        let background = classicColor(memory.softSwitches.textColor & 0x0F)
 
         for y in 0..<classicGraphicsHeight {
             if memory.softSwitches.mixedMode && y >= 160 {
@@ -157,8 +157,8 @@ public enum IIGSVideoRenderer {
         )
 
         let pageBase: UInt32 = memory.softSwitches.page2 ? 0xE00800 : 0xE00400
-        let foreground = classicColor(memory.softSwitches.textColor & 0x0F)
-        let background = classicColor(memory.softSwitches.textColor >> 4)
+        let foreground = classicColor(memory.softSwitches.textColor >> 4)
+        let background = classicColor(memory.softSwitches.textColor & 0x0F)
 
         for y in 0..<frame.height {
             for x in 0..<frame.width {
@@ -303,8 +303,8 @@ public enum IIGSVideoRenderer {
         into frame: inout IIGSVideoFrame
     ) {
         let pageBase: UInt32 = memory.softSwitches.page2 ? 0xE00800 : 0xE00400
-        let foreground = classicColor(memory.softSwitches.textColor & 0x0F)
-        let background = classicColor(memory.softSwitches.textColor >> 4)
+        let foreground = classicColor(memory.softSwitches.textColor >> 4)
+        let background = classicColor(memory.softSwitches.textColor & 0x0F)
         let rowHeight = classicTextCellHeight
 
         for sourceRow in rows {
