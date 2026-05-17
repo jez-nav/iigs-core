@@ -60,6 +60,19 @@ public final class IIGSSoundController {
 
     public init() {}
 
+    public func reset() {
+        speakerLatch = false
+        speakerToggles.removeAll(keepingCapacity: true)
+        soundControl = 0x0F
+        pointer = 0
+        dataLatch = 0
+        docRAM = Array(repeating: 0, count: Self.docRAMSize)
+        oscillators = Array(repeating: IIGSDOCOscillator(), count: Self.oscillatorCount)
+        enabledOscillatorCount = 1
+        globalRegisters = Array(repeating: 0, count: 0x20)
+        pendingInterrupts.removeAll(keepingCapacity: true)
+    }
+
     @discardableResult
     public func toggleSpeaker(atCycle cycle: UInt64) -> UInt8 {
         speakerLatch.toggle()

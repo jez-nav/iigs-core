@@ -39,6 +39,17 @@ public final class IIGSIWMController {
 
     public init() {}
 
+    public func reset() {
+        phaseLines = [false, false, false, false]
+        motorOn = false
+        selectedDriveNumber = 1
+        q6 = false
+        q7 = false
+        driveControlRegister = 0
+        threePointFiveMotorOn = false
+        writeModePrimed = false
+    }
+
     public var selectedDrive: IIGSIWMDrive {
         selectedDriveNumber == 2 ? drive2 : drive1
     }

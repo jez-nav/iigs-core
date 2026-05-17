@@ -121,6 +121,30 @@ public struct IIGSDebuggerInterruptSnapshot: Equatable, Sendable {
     }
 }
 
+public struct IIGSDebuggerHardwareSnapshot: Equatable, Sendable {
+    public let stateRegister: UInt8
+    public let shadowInhibit: UInt8
+    public let speedRegister: UInt8
+    public let videoControl: UInt8
+    public let textColor: UInt8
+    public let slotROMSelect: UInt8
+    public let verticalCounter: UInt8
+    public let horizontalCounter: UInt8
+    public let keyboardModifiers: UInt8
+
+    public init(memory: FlatMemoryBus) {
+        self.stateRegister = memory.softSwitches.stateRegister
+        self.shadowInhibit = memory.softSwitches.shadowInhibit
+        self.speedRegister = memory.softSwitches.speedRegister
+        self.videoControl = memory.softSwitches.videoControl
+        self.textColor = memory.softSwitches.textColor
+        self.slotROMSelect = memory.softSwitches.slotROMSelect
+        self.verticalCounter = IIGSVideoTiming.verticalCounter(atCycle: memory.cycleCount)
+        self.horizontalCounter = IIGSVideoTiming.horizontalCounter(atCycle: memory.cycleCount)
+        self.keyboardModifiers = memory.adbController.modifierRegister
+    }
+}
+
 public struct IIGSDebuggerEventSnapshot: Equatable, Identifiable, Sendable {
     public let id: UInt64
     public let cycle: UInt64
@@ -144,6 +168,7 @@ public struct IIGSDebuggerSnapshot: Equatable, Sendable {
     public let timing: IIGSDebuggerTimingSnapshot
     public let mouse: IIGSDebuggerMouseSnapshot
     public let interrupts: IIGSDebuggerInterruptSnapshot
+    public let hardware: IIGSDebuggerHardwareSnapshot
     public let pendingEvents: [IIGSDebuggerEventSnapshot]
 
     public init(machine: IIGSMachine) {
@@ -153,6 +178,7 @@ public struct IIGSDebuggerSnapshot: Equatable, Sendable {
         self.timing = IIGSDebuggerTimingSnapshot(cycles: machine.memory.cycleCount)
         self.mouse = IIGSDebuggerMouseSnapshot(adbController: machine.memory.adbController)
         self.interrupts = IIGSDebuggerInterruptSnapshot(interruptState: machine.memory.interruptState)
+        self.hardware = IIGSDebuggerHardwareSnapshot(memory: machine.memory)
         self.pendingEvents = machine.scheduler.pendingEvents().prefix(16).map(IIGSDebuggerEventSnapshot.init(event:))
     }
 }

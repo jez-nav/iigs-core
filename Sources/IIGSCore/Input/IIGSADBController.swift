@@ -69,6 +69,24 @@ public final class IIGSADBController {
         }
     }
 
+    public func reset() {
+        responseQueue.removeAll()
+        keyboardEvents.removeAll()
+        mouseBytes.removeAll()
+        pendingCommand = nil
+        modifierRegister = 0
+        keyboardLatch = 0
+        keyboardStrobe = false
+        mouseX = 0
+        mouseY = 0
+        mouseButtonDown = false
+        modeByte = 0
+        configurationByte = 0
+        statusControl = 0
+        keyboardAddress = 2
+        mouseAddress = 3
+    }
+
     public func injectAppleIIKey(_ ascii: UInt8, modifiers: IIGSADBModifiers = []) {
         keyboardLatch = ascii & 0x7F
         keyboardStrobe = true
@@ -246,15 +264,7 @@ public final class IIGSADBController {
     }
 
     private func resetController() {
-        responseQueue.removeAll()
-        keyboardEvents.removeAll()
-        mouseBytes.removeAll()
-        pendingCommand = nil
-        modeByte = 0
-        configurationByte = 0
-        statusControl = 0
-        keyboardAddress = 2
-        mouseAddress = 3
+        reset()
     }
 
     private enum PendingCommand {

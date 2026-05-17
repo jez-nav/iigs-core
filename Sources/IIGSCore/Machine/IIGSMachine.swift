@@ -58,6 +58,9 @@ public final class IIGSMachine {
 
     public func reset(_ kind: IIGSResetKind = .cold) {
         lastResetKind = kind
+        scheduler.reset(to: 0)
+        scheduleVideoEvents()
+        memory.resetHardware(kind)
         cpu.reset(using: memory)
         serviceScheduledEvents()
     }

@@ -65,6 +65,7 @@
 		1A000001000000000000003F /* InspectorPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013E /* InspectorPanel.swift */; };
 		1A0000010000000000000049 /* MachineDisplayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013F /* MachineDisplayPanel.swift */; };
 		1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000140 /* DebuggerPhase20Tests.swift */; };
+		1A000001000000000000004B /* ROMBootConvergencePhase21Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -171,6 +172,7 @@
 		1A000001000000000000013E /* InspectorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorPanel.swift; sourceTree = "<group>"; };
 		1A000001000000000000013F /* MachineDisplayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDisplayPanel.swift; sourceTree = "<group>"; };
 		1A0000010000000000000140 /* DebuggerPhase20Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase20Tests.swift; sourceTree = "<group>"; };
+		1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROMBootConvergencePhase21Tests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -417,6 +419,7 @@
 				1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */,
 				1A000001000000000000013C /* DebuggerPhase19Tests.swift */,
 				1A0000010000000000000140 /* DebuggerPhase20Tests.swift */,
+				1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */,
 			);
 			path = IIGSCoreTests;
 			sourceTree = "<group>";
@@ -605,6 +608,7 @@
 				1A000001000000000000003B /* CoreCorrectnessPhase18Tests.swift in Sources */,
 				1A000001000000000000003D /* DebuggerPhase19Tests.swift in Sources */,
 				1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */,
+				1A000001000000000000004B /* ROMBootConvergencePhase21Tests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

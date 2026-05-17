@@ -7,12 +7,38 @@ struct InspectorPanel: View {
     var body: some View {
         GroupBox("Inspectors") {
             VStack(alignment: .leading, spacing: 10) {
+                HardwareInspector(hardware: snapshot.hardware)
+                Divider()
                 InterruptInspector(interrupts: snapshot.interrupts)
                 Divider()
                 SchedulerInspector(events: snapshot.pendingEvents)
             }
             .font(.system(.caption, design: .monospaced))
             .padding(.vertical, 4)
+        }
+    }
+}
+
+private struct HardwareInspector: View {
+    let hardware: IIGSDebuggerHardwareSnapshot
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+            row("STATE", hex(hardware.stateRegister, width: 2))
+            row("SHDW", hex(hardware.shadowInhibit, width: 2))
+            row("SPEED", hex(hardware.speedRegister, width: 2))
+            row("VIDEO", hex(hardware.videoControl, width: 2))
+            row("VC/HC", "\(hex(hardware.verticalCounter, width: 2)) / \(hex(hardware.horizontalCounter, width: 2))")
+            row("ADB MOD", hex(hardware.keyboardModifiers, width: 2))
+        }
+    }
+
+    private func row(_ name: String, _ value: String) -> some View {
+        GridRow {
+            Text(name)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .textSelection(.enabled)
         }
     }
 }

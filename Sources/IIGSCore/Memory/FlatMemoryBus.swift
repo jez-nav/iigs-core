@@ -138,6 +138,23 @@ public final class FlatMemoryBus: IIGSBus {
         romImage = nil
     }
 
+    public func resetHardware(_ kind: IIGSResetKind = .cold) {
+        cycleCount = 0
+        softSwitches = IIGSSoftSwitchState()
+        softSwitches.shadowInhibit = 0x08
+        if let version = romImage?.version {
+            softSwitches.setROMVersion(version)
+        }
+        interruptState = IIGSInterruptState()
+        adbController.reset()
+        iwmController.reset()
+        soundController.reset()
+        paddleController = IIGSPaddleController()
+        realTimeClock.resetTransientState()
+
+        _ = kind
+    }
+
     public subscript(address: UInt32) -> UInt8 {
         get { read8(at: address) }
         set { write8(newValue, at: address) }
@@ -548,6 +565,7 @@ public final class FlatMemoryBus: IIGSBus {
         }
         bytes[index] = value
     }
+
 }
 
 private struct IIGSRealTimeClock {
@@ -592,6 +610,12 @@ private struct IIGSRealTimeClock {
             dataRegister = parameterRAM[Int(decodedCommandAddress() ?? 0)]
             commandBuffer.removeAll(keepingCapacity: true)
         }
+    }
+
+    mutating func resetTransientState() {
+        dataRegister = 0
+        controlRegister = 0
+        commandBuffer.removeAll(keepingCapacity: true)
     }
 
     private mutating func appendCommandByte(_ value: UInt8) {

@@ -55,8 +55,8 @@ final class TimingPhase15Tests: XCTestCase {
         machine.memory[0x00FFFD] = 0x80
         machine.memory[0x00FFFE] = 0x00
         machine.memory[0x00FFFF] = 0x90
-        machine.memory[0x00C041] = IIGSInterruptState.verticalBlankMask
         machine.reset(.cold)
+        machine.memory[0x00C041] = IIGSInterruptState.verticalBlankMask
 
         try machine.step()
         XCTAssertFalse(machine.cpu.registers.status.contains(.interruptDisable))

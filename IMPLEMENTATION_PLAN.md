@@ -26,7 +26,7 @@ This is the canonical phase plan for the Apple IIgs emulator core. Keep this fil
 - Phase 18: completed as a first core correctness pass for `$C023/$C032` interrupt state, scanline/one-second scheduler IRQ routing, deterministic paddle timer reads, and runtime harness coverage.
 - Phase 19: completed as a first debugger quality pass with core disassembly APIs, CLI disassembly/register editing, macOS disassembly and inspector panels, and tests.
 - Phase 20: completed as a first interactive debugger display/input pass with live video rendering, keyboard/mouse capture, ADB forwarding, and continuous run/pause controls.
-- Phase 21: planned as ROM 01 boot convergence, using the new Technical Notes and memory-map docs to move from visible ROM drawing to the expected blue startup path.
+- Phase 21: completed as a first ROM 01 boot convergence pass with TN #95 diagnostic decoding, reset hardware-state cleanup, Mega II counter correction, ADB/input default reset, and debugger boot-state visibility. Full blue ROM 01 startup still requires follow-on boot-path work.
 
 ## Phase 13 Audit Snapshot
 
@@ -550,7 +550,7 @@ Tests:
 
 Goal: get from "ROM draws something" to the expected ROM 01 blue startup screens by making the emulated hardware state credible enough for firmware startup.
 
-Status: planned. The current debugger display can show ROM-generated output, including white fill/test patterns, but the firmware has not yet reached the expected blue startup path. New references under `IIGS-Spec/TN`, especially `TN.IIGS.095_ROM_Diagnostic_Errors.txt`, `TN.IIGS.039_Mega_II_Video_Counters.txt`, `TN.IIGS.026_ROM_Revision_Summary.txt`, and `TN.IIGS.030_Apple_IIgs_Hardware_Reference_Updates.txt`, should guide this pass.
+Status: completed as a first convergence slice. The debugger can decode ROM diagnostic values, resets now restore boot-critical hardware defaults, Mega II video counters follow the Technical Note #39 readback recipe, default ADB/input state no longer carries modifiers across reset, and debugger snapshots expose state/shadow/video/counter fields. The expected full blue ROM 01 startup is not complete yet; remaining work should continue with ROM checkpoint tracing and more firmware-visible hardware behavior.
 
 Implement:
 

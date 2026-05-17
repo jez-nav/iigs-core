@@ -22,7 +22,7 @@ final class VideoPhase6Tests: XCTestCase {
 
         let secondMemory = FlatMemoryBus()
         secondMemory.idle(cycles: IIGSVideoTiming.cyclesPerLine - 1)
-        XCTAssertEqual(secondMemory[0x00C02E], 0x81)
+        XCTAssertEqual(secondMemory[0x00C02E], 0x80)
         XCTAssertEqual(secondMemory[0x00C02F], 0xC0)
     }
 

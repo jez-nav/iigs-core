@@ -37,7 +37,7 @@ public enum IIGSVideoTiming {
 
     public static func verticalCounter(atCycle cycle: UInt64) -> UInt8 {
         let line = position(atCycle: cycle).line
-        return UInt8(truncatingIfNeeded: 0x80 + line)
+        return UInt8(truncatingIfNeeded: 0x80 + (line / 2))
     }
 
     public static func horizontalCounter(atCycle cycle: UInt64) -> UInt8 {

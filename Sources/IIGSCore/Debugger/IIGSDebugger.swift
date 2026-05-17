@@ -41,6 +41,7 @@ public enum IIGSDebuggerAssertion: Equatable, Sendable {
 public enum IIGSDebuggerCommand: Equatable, Sendable {
     case help
     case quit
+    case decodeDiagnostic(UInt32)
     case reset(IIGSResetKind)
     case registers
     case snapshot
@@ -60,6 +61,151 @@ public enum IIGSDebuggerCommand: Equatable, Sendable {
     case assertion(IIGSDebuggerAssertion)
 }
 
+public struct IIGSROMDiagnosticCode: Equatable, Sendable, CustomStringConvertible {
+    public let rawValue: UInt32
+    public let testNumber: UInt8
+    public let failureByte: UInt8
+    public let detailByte: UInt8
+    public let lowByte: UInt8
+
+    public init(rawValue: UInt32) {
+        self.rawValue = rawValue
+        self.testNumber = UInt8((rawValue >> 24) & 0xFF)
+        self.failureByte = UInt8((rawValue >> 16) & 0xFF)
+        self.detailByte = UInt8((rawValue >> 8) & 0xFF)
+        self.lowByte = UInt8(rawValue & 0xFF)
+    }
+
+    public var testName: String {
+        switch testNumber {
+        case 0x01:
+            return "ROM Test"
+        case 0x02:
+            return "RAM Test"
+        case 0x03:
+            return "Soft Switches and State Register Test"
+        case 0x04:
+            return "RAM Address Test"
+        case 0x05:
+            return "Speed Test"
+        case 0x06:
+            return "Serial Test"
+        case 0x07:
+            return "Clock Test"
+        case 0x08:
+            return "Battery RAM Test"
+        case 0x09:
+            return "Apple Desktop Bus Test"
+        case 0x0A:
+            return "Shadow Register Test"
+        case 0x0B:
+            return "Interrupts Test"
+        case 0x0C:
+            return "Sound Test"
+        default:
+            return "Unknown ROM diagnostic test"
+        }
+    }
+
+    public var detail: String {
+        switch testNumber {
+        case 0x01:
+            if failureByte != 0 {
+                return "failed ROM checksum"
+            }
+            if lowByte == 0x01 {
+                return "ROM test encountered bad RAM while reporting the failure"
+            }
+        case 0x02:
+            return failureByte == 0xFF
+                ? "ADB tool call error during RAM test"
+                : "RAM bank \(formatDiagnosticByte(failureByte)) failed bit mask \(formatDiagnosticByte(detailByte))"
+        case 0x03:
+            return "state bit \(formatDiagnosticByte(failureByte)), soft switch low byte \(formatDiagnosticByte(detailByte))"
+        case 0x04:
+            return failureByte == 0xFF
+                ? "ADB tool call error during RAM address test"
+                : "RAM bank \(formatDiagnosticByte(failureByte)) failed address \(formatDiagnosticWord(UInt16(detailByte) << 8 | UInt16(lowByte)))"
+        case 0x05:
+            switch failureByte {
+            case 0x01:
+                return "speed stuck slow"
+            case 0x02:
+                return "speed stuck fast"
+            default:
+                break
+            }
+        case 0x07:
+            if lowByte == 0x01 {
+                return "fatal clock error"
+            }
+        case 0x08:
+            switch failureByte {
+            case 0x01:
+                return "battery RAM address test failed at \(formatDiagnosticByte(detailByte))"
+            case 0x02:
+                return "battery RAM non-volatile pattern \(formatDiagnosticByte(detailByte)) failed at \(formatDiagnosticByte(lowByte))"
+            default:
+                break
+            }
+        case 0x09:
+            return lowByte == 0x01
+                ? "ADB tools fatal error, no checksum computed"
+                : "ADB checksum \(formatDiagnosticWord(UInt16(failureByte) << 8 | UInt16(detailByte)))"
+        case 0x0A:
+            switch failureByte {
+            case 0x01:
+                return "text page 1 shadow failed"
+            case 0x02:
+                return "text page 2 shadow failed"
+            case 0x03:
+                return "ADB tool call error"
+            case 0x04:
+                return "power-on clear bit error"
+            default:
+                break
+            }
+        case 0x0B:
+            switch failureByte {
+            case 0x01:
+                return "VBL interrupt timeout"
+            case 0x02:
+                return "VBL IRQ status failed"
+            case 0x03, 0x04:
+                return "quarter-second interrupt failed"
+            case 0x06:
+                return "VGC IRQ failed"
+            case 0x07:
+                return "scan-line interrupt failed"
+            default:
+                break
+            }
+        case 0x0C:
+            switch lowByte {
+            case 0x01:
+                return "DOC RAM data error"
+            case 0x02:
+                return "DOC RAM address error"
+            case 0x03:
+                return "DOC data register failed"
+            case 0x04:
+                return "DOC control register failed"
+            case 0x05:
+                return "DOC oscillator interrupt timeout"
+            default:
+                break
+            }
+        default:
+            break
+        }
+        return "raw fields BB=\(formatDiagnosticByte(failureByte)) CC=\(formatDiagnosticByte(detailByte)) DD=\(formatDiagnosticByte(lowByte))"
+    }
+
+    public var description: String {
+        "System Bad \(formatDiagnosticLong(rawValue)): \(testName); \(detail)"
+    }
+}
+
 public struct IIGSDebuggerCommandParser: Sendable {
     public init() {}
 
@@ -74,6 +220,8 @@ public struct IIGSDebuggerCommandParser: Sendable {
             return .help
         case "q", "quit", "exit":
             return .quit
+        case "diag", "diagnostic", "systembad":
+            return .decodeDiagnostic(try parseRequiredLong(parts.dropFirst(), name: "diagnostic code"))
         case "reset":
             return .reset(try parseResetKind(parts.dropFirst()))
         case "r", "regs", "registers":
@@ -182,6 +330,17 @@ public struct IIGSDebuggerCommandParser: Sendable {
             throw IIGSDebuggerError.missingArgument(name)
         }
         return try parseAddress(value)
+    }
+
+    private func parseRequiredLong(_ parts: ArraySlice<String>, name: String) throws -> UInt32 {
+        guard let value = parts.first else {
+            throw IIGSDebuggerError.missingArgument(name)
+        }
+        let normalized = normalizeNumber(value)
+        guard let parsed = UInt32(normalized, radix: 16) else {
+            throw IIGSDebuggerError.invalidNumber(value)
+        }
+        return parsed
     }
 
     private func parseReadMemory(_ parts: ArraySlice<String>) throws -> IIGSDebuggerCommand {
@@ -407,6 +566,8 @@ public final class IIGSDebuggerSession {
             return Self.helpText
         case .quit:
             return "quit"
+        case let .decodeDiagnostic(code):
+            return IIGSROMDiagnosticCode(rawValue: code).description
         case let .reset(kind):
             machine.reset(kind)
             return "Reset \(kind) PC=\(formatAddress(machine.currentProgramAddress))"
@@ -485,6 +646,7 @@ public final class IIGSDebuggerSession {
       disasm <addr> [count] Disassemble memory using current CPU widths
       set <addr> <byte>     Write memory
       setreg <name> <value> Write CPU register
+      diag <AABBCCDD>       Decode ROM diagnostic System Bad value
       assert pc <addr>
       assert reg <name> <value>
       assert flag <name> <0|1>
@@ -550,6 +712,7 @@ public final class IIGSDebuggerSession {
             "flags=N\(bit(snapshot.flags.negative)) V\(bit(snapshot.flags.overflow)) M\(bit(snapshot.flags.accumulator8Bit)) X\(bit(snapshot.flags.index8Bit)) D\(bit(snapshot.flags.decimal)) I\(bit(snapshot.flags.interruptDisable)) Z\(bit(snapshot.flags.zero)) C\(bit(snapshot.flags.carry))",
             "status=RDY\(bit(snapshot.status.ready)) IRQ\(bit(snapshot.status.irqPending)) NMI\(bit(snapshot.status.nmiPending)) WAI\(bit(snapshot.status.waiting)) STP\(bit(snapshot.status.stopped))",
             "timing=cycles:\(snapshot.timing.cycles) line:\(snapshot.timing.videoLine) dot:\(snapshot.timing.videoCycleInLine) frameCycle:\(snapshot.timing.videoFrameCycle) vbl:\(bit(snapshot.timing.inVerticalBlank))",
+            "hardware=state:\(formatByte(snapshot.hardware.stateRegister)) shadow:\(formatByte(snapshot.hardware.shadowInhibit)) speed:\(formatByte(snapshot.hardware.speedRegister)) video:\(formatByte(snapshot.hardware.videoControl)) vc:\(formatByte(snapshot.hardware.verticalCounter)) hc:\(formatByte(snapshot.hardware.horizontalCounter)) adbmod:\(formatByte(snapshot.hardware.keyboardModifiers))",
             "events=pending:\(machine.scheduler.pendingEvents().count) serviced:\(machine.servicedDeviceEvents.count)"
         ].joined(separator: "\n")
     }
@@ -843,4 +1006,16 @@ private extension String {
         let text = String(value, radix: 16, uppercase: true)
         self = String(repeating: "0", count: Swift.max(0, width - text.count)) + text
     }
+}
+
+private func formatDiagnosticByte(_ value: UInt8) -> String {
+    "$" + String(formatHex: UInt32(value), width: 2)
+}
+
+private func formatDiagnosticWord(_ value: UInt16) -> String {
+    "$" + String(formatHex: UInt32(value), width: 4)
+}
+
+private func formatDiagnosticLong(_ value: UInt32) -> String {
+    "$" + String(formatHex: value, width: 8)
 }
