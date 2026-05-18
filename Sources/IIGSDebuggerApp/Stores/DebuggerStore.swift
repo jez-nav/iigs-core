@@ -75,9 +75,8 @@ final class DebuggerStore: ObservableObject {
     private var lastDisplayMouseX: Int?
     private var lastDisplayMouseY: Int?
     private var lastMouseButtonDown = false
-    private static let liveRunQuantum: TimeInterval = 1.0 / 240.0
     private static let livePublishInterval: TimeInterval = 1.0 / 30.0
-    private static let liveRunInstructionLimit = 500_000
+    private static let liveRunInstructionLimit = 2_000_000
     private static let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -303,7 +302,6 @@ final class DebuggerStore: ObservableObject {
     }
 
     func noteUIRefresh() {
-        uiFrameTicks += 1
         let now = Date()
         let elapsed = now.timeIntervalSince(statsDate)
         elapsedSinceReset = Self.formatElapsed(now.timeIntervalSince(resetDate))
@@ -322,17 +320,17 @@ final class DebuggerStore: ObservableObject {
 
     private func startLiveRunLoop(control: LiveRunControl) {
         let sessionBox = liveSession
-        let cycleBudget = max(1, Int((Self.liveRunQuantum * IIGSVideoTiming.megaIICyclesPerSecond).rounded()))
+        let cycleBudget = IIGSVideoTiming.cyclesPerFrame
         let instructionLimit = Self.liveRunInstructionLimit
-        let quantum = Self.liveRunQuantum
         let publishInterval = Self.livePublishInterval
+        let frameInterval = 1.0 / IIGSVideoTiming.nominalFramesPerSecond
 
         liveRunQueue.async {
             let session = sessionBox.session
             var nextPublish = Date()
+            var nextFrameDeadline = Date().addingTimeInterval(frameInterval)
 
             while !control.isCancelled {
-                let loopStart = Date()
                 let outcome: Result<IIGSMachineRunResult, Error>
                 do {
                     outcome = .success(try session.runLiveCycleBatch(cycleLimit: cycleBudget, instructionLimit: instructionLimit))
@@ -367,9 +365,12 @@ final class DebuggerStore: ObservableObject {
                     nextPublish = now.addingTimeInterval(publishInterval)
                 }
 
-                let elapsed = Date().timeIntervalSince(loopStart)
-                if elapsed < quantum {
-                    Thread.sleep(forTimeInterval: quantum - elapsed)
+                let sleepDuration = nextFrameDeadline.timeIntervalSinceNow
+                if sleepDuration > 0 {
+                    Thread.sleep(forTimeInterval: sleepDuration)
+                    nextFrameDeadline = nextFrameDeadline.addingTimeInterval(frameInterval)
+                } else {
+                    nextFrameDeadline = Date().addingTimeInterval(frameInterval)
                 }
             }
         }
@@ -381,6 +382,7 @@ final class DebuggerStore: ObservableObject {
         }
         snapshot = latestSnapshot
         videoFrame = latestFrame
+        uiFrameTicks += 1
     }
 
     private func finishLiveRunStop(_ result: IIGSMachineRunResult, snapshot latestSnapshot: IIGSDebuggerSnapshot, frame latestFrame: IIGSVideoFrame) {
