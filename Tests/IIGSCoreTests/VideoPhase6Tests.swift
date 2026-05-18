@@ -152,9 +152,11 @@ final class VideoPhase6Tests: XCTestCase {
         let frame = IIGSVideoRenderer.renderClassicText(from: memory)
 
         XCTAssertEqual(memory[0x00C01E] & 0x80, 0x80)
-        XCTAssertEqual(frame[0, 0], .white)
-        XCTAssertEqual(frame[7, 3], .white)
-        XCTAssertEqual(frame[12, 3], .white)
+        XCTAssertEqual(frame[4, 0], .white)
+        XCTAssertEqual(frame[0, 3], .white)
+        XCTAssertEqual(frame[6, 3], .white)
+        XCTAssertEqual(frame[7, 0], .white)
+        XCTAssertEqual(frame[13, 0], .white)
     }
 
     func testPrimaryCharacterSetFlashesLowRangeBytes() {

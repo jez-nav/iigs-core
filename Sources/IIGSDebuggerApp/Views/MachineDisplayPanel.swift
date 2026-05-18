@@ -18,7 +18,7 @@ struct MachineDisplayPanel: View {
                     onKeyUp: store.handleKeyUp(keyCode:modifiers:)
                 )
                 .aspectRatio(
-                    CGFloat(max(1, store.videoFrame.width)) / CGFloat(max(1, store.videoFrame.height)),
+                    displayAspectRatio(for: store.videoFrame),
                     contentMode: .fit
                 )
                 .overlay(alignment: .topLeading) {
@@ -33,6 +33,14 @@ struct MachineDisplayPanel: View {
             }
             .padding(.vertical, 4)
         }
+    }
+
+    private func displayAspectRatio(for frame: IIGSVideoFrame) -> CGFloat {
+        if frame.width == IIGSVideoRenderer.superHiresWidth,
+           frame.height == IIGSVideoRenderer.superHiresHeight {
+            return CGFloat(IIGSVideoRenderer.superHiresWidth) / CGFloat(IIGSVideoRenderer.superHiresHeight * 2)
+        }
+        return CGFloat(max(1, frame.width)) / CGFloat(max(1, frame.height))
     }
 }
 

@@ -58,6 +58,13 @@ public struct IIGSCharacterGenerator: Equatable, Sendable {
     }
 
     public func glyph(forScreenByte byte: UInt8, alternateCharacterSet: Bool, flashPhase: Bool = false) -> IIGSCharacterGlyph {
+        if source == .fallback,
+           alternateCharacterSet,
+           (0x40...0x5F).contains(byte),
+           let rows = Self.fallbackMouseTextRows(for: byte) {
+            return IIGSCharacterGlyph(rows: rows)
+        }
+
         let resolved = resolvedGlyphCode(forScreenByte: byte, alternateCharacterSet: alternateCharacterSet, flashPhase: flashPhase)
         var glyph = glyph(forCode: resolved.code)
         if resolved.inverted {
@@ -105,13 +112,26 @@ public struct IIGSCharacterGenerator: Equatable, Sendable {
             set(code, asciiFallbackRows(for: code))
         }
 
-        // Minimal MouseText/alternate-charset glyphs used by the ROM startup
-        // progress screen. More can be supplied by a runtime character ROM.
-        set(0x40, [0x40, 0x60, 0x70, 0x7C, 0x7E, 0x7C, 0x48, 0x08])
-        set(0x4C, [0x00, 0x00, 0x00, 0x7E, 0x7E, 0x00, 0x00, 0x00])
-        set(0x53, [0x00, 0x00, 0x00, 0x7E, 0x00, 0x00, 0x00, 0x00])
-
         return rows
+    }
+
+    private static func fallbackMouseTextRows(for code: UInt8) -> [UInt8]? {
+        let sourceRows: [UInt8]
+        switch code {
+        case 0x40:
+            sourceRows = [0x08, 0x10, 0x6C, 0xFE, 0xFC, 0xFC, 0x7E, 0x6C]
+        case 0x41:
+            sourceRows = [0x08, 0x10, 0x6C, 0x82, 0x84, 0x84, 0x52, 0x6C]
+        case 0x4C:
+            sourceRows = [0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        case 0x53:
+            sourceRows = [0x00, 0x00, 0x00, 0xFE, 0x00, 0x00, 0x00, 0x00]
+        default:
+            return nil
+        }
+
+        // Apple MouseText rows are stored as 7 visible bits in bits 7...1.
+        return sourceRows.map { ($0 >> 1) & 0x7F }
     }
 
     private static func asciiFallbackRows(for code: UInt8) -> [UInt8] {
