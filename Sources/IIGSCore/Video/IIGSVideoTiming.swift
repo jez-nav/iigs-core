@@ -16,6 +16,8 @@ public enum IIGSVideoTiming {
     public static let cyclesPerLine = 65
     public static let scanlinesPerFrame = 262
     public static let cyclesPerFrame = cyclesPerLine * scanlinesPerFrame
+    public static let megaIICyclesPerSecond = 1_023_000.0
+    public static let nominalFramesPerSecond = megaIICyclesPerSecond / Double(cyclesPerFrame)
     public static let classicVisibleLines = 192
     public static let superHiresVisibleLines = 200
 

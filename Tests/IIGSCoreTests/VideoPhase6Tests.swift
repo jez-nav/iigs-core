@@ -44,22 +44,38 @@ final class VideoPhase6Tests: XCTestCase {
         XCTAssertEqual(frame[3, 0], IIGSRGBColor(red: 0x00, green: 0xFF, blue: 0x00))
     }
 
-    func testSuperHires640UsesTwoBitPixels() {
+    func testSuperHires640UsesPairedPaletteInterpretation() {
         let memory = FlatMemoryBus()
         memory[0x00C029] = 0x80
-        writePaletteEntry(0, raw: 0x0000, to: memory)
-        writePaletteEntry(1, raw: 0x0F00, to: memory)
-        writePaletteEntry(2, raw: 0x00F0, to: memory)
         writePaletteEntry(3, raw: 0x000F, to: memory)
+        writePaletteEntry(4, raw: 0x0F00, to: memory)
+        writePaletteEntry(9, raw: 0x00F0, to: memory)
+        writePaletteEntry(14, raw: 0x0FFF, to: memory)
         memory[0xE19D00] = 0x80
         memory[0xE12000] = 0x6C
 
         let frame = IIGSVideoRenderer.renderSuperHires(from: memory)
 
-        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
-        XCTAssertEqual(frame[1, 0], IIGSRGBColor(red: 0x00, green: 0xFF, blue: 0x00))
+        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0x00, green: 0xFF, blue: 0x00))
+        XCTAssertEqual(frame[1, 0], .white)
         XCTAssertEqual(frame[2, 0], IIGSRGBColor(red: 0x00, green: 0x00, blue: 0xFF))
-        XCTAssertEqual(frame[3, 0], .black)
+        XCTAssertEqual(frame[3, 0], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
+    }
+
+    func testSuperHires640StandardWhiteSelectorIsContinuousAcrossByte() {
+        let memory = FlatMemoryBus()
+        memory[0x00C029] = 0x80
+        for entry in [3, 7, 11, 15] {
+            writePaletteEntry(entry, raw: 0x0FFF, to: memory)
+        }
+        memory[0xE19D00] = 0x80
+        memory[0xE12000] = 0xFF
+
+        let frame = IIGSVideoRenderer.renderSuperHires(from: memory)
+
+        for x in 0..<4 {
+            XCTAssertEqual(frame[x, 0], .white, "640-mode selector 3 should use all four white standard-palette entries.")
+        }
     }
 
     func testSuperHiresFillModeRepeatsLastNonzeroNibble() {

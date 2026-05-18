@@ -2,6 +2,12 @@ import XCTest
 @testable import IIGSCore
 
 final class TimingPhase15Tests: XCTestCase {
+    func testNominalVideoTimingUsesMegaIIClockRate() {
+        XCTAssertEqual(IIGSVideoTiming.cyclesPerFrame, 17_030)
+        XCTAssertEqual(IIGSVideoTiming.megaIICyclesPerSecond, 1_023_000, accuracy: 0.5)
+        XCTAssertEqual(IIGSVideoTiming.nominalFramesPerSecond, 60.070, accuracy: 0.001)
+    }
+
     func testSchedulerFiresSameCycleEventsInDeterministicPriorityThenInsertionOrder() {
         let scheduler = IIGSEventScheduler()
         let firstCustom = scheduler.schedule(kind: .custom, at: 10, payload: 1)

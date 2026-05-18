@@ -228,11 +228,26 @@ public enum IIGSVideoRenderer {
 
         for byteOffset in 0..<160 {
             let byte = memory.peek8(at: lineBase + UInt32(byteOffset))
-            for shift in stride(from: 6, through: 0, by: -2) {
-                let colorIndex = Int((byte >> UInt8(shift)) & 0x03)
+            for (pixelInByte, shift) in stride(from: 6, through: 0, by: -2).enumerated() {
+                let colorBits = Int((byte >> UInt8(shift)) & 0x03)
+                let colorIndex = superHires640PaletteEntry(colorBits: colorBits, pixelInByte: pixelInByte)
                 frame[x, line] = superHiresColor(from: memory, palette: palette, entry: colorIndex)
                 x += 1
             }
+        }
+    }
+
+    private static func superHires640PaletteEntry(colorBits: Int, pixelInByte: Int) -> Int {
+        precondition((0...3).contains(colorBits))
+        switch pixelInByte {
+        case 0:
+            return colorBits + 8
+        case 1:
+            return colorBits + 12
+        case 2:
+            return colorBits
+        default:
+            return colorBits + 4
         }
     }
 

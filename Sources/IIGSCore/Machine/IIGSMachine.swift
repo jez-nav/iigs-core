@@ -203,13 +203,26 @@ public final class IIGSMachine {
     }
 
     @discardableResult
-    public func runForCycles(_ cycleLimit: Int, instructionLimit: Int = Int.max) throws -> IIGSMachineRunResult {
+    public func runForCycles(
+        _ cycleLimit: Int,
+        instructionLimit: Int = Int.max,
+        breakpoints: Set<UInt32> = []
+    ) throws -> IIGSMachineRunResult {
         precondition(cycleLimit >= 0)
         precondition(instructionLimit >= 0)
         let startingCycles = memory.cycleCount
         var executed = 0
 
         while memory.cycleCount - startingCycles < UInt64(cycleLimit), executed < instructionLimit {
+            let address = currentProgramAddress
+            if breakpoints.contains(address) {
+                return runResult(
+                    instructionsExecuted: executed,
+                    startingCycles: startingCycles,
+                    stopReason: .breakpoint(address)
+                )
+            }
+
             _ = try step()
             executed += 1
 

@@ -69,6 +69,19 @@ final class DebuggerPhase20Tests: XCTestCase {
         XCTAssertEqual(session.machine.currentProgramAddress, 0x008002)
     }
 
+    func testDebuggerSessionLiveCycleBatchStopsAtBreakpoint() throws {
+        let session = IIGSDebuggerSession(machine: IIGSMachine(romImage: try makeROM(resetVector: 0x8000)))
+        session.loadBinary([0xEA, 0xEA, 0xEA], at: 0x008000)
+        _ = try session.execute(.reset(.cold))
+        _ = try session.execute(.addBreakpoint(0x008002))
+
+        let result = try session.runLiveCycleBatch(cycleLimit: 1_000, instructionLimit: 100)
+
+        XCTAssertEqual(result.stopReason, .breakpoint(0x008002))
+        XCTAssertEqual(result.instructionsExecuted, 2)
+        XCTAssertEqual(session.machine.currentProgramAddress, 0x008002)
+    }
+
     private func makeROM(resetVector: UInt16) throws -> IIGSROMImage {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[bytes.count - 4] = UInt8(resetVector & 0x00FF)

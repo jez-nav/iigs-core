@@ -3,7 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = DebuggerStore()
-    private let uiTimer = Timer.publish(every: 1.0 / 10.0, on: .main, in: .common).autoconnect()
+    private let uiTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +29,7 @@ struct ContentView: View {
         }
         .onReceive(uiTimer) { _ in
             if case .running = store.runState {
-                store.runContinuousTick(instructionBudget: 8_000)
+                store.runContinuousTick()
                 store.noteUIRefresh()
             }
         }

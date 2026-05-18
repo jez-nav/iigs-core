@@ -560,6 +560,15 @@ public final class IIGSDebuggerSession {
     }
 
     @discardableResult
+    public func runLiveCycleBatch(cycleLimit: Int, instructionLimit: Int) throws -> IIGSMachineRunResult {
+        try machine.runForCycles(
+            max(1, cycleLimit),
+            instructionLimit: max(1, instructionLimit),
+            breakpoints: breakpoints
+        )
+    }
+
+    @discardableResult
     public func execute(_ command: IIGSDebuggerCommand) throws -> String {
         switch command {
         case .help:

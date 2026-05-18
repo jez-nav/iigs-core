@@ -43,9 +43,12 @@ final class DebuggerStore: ObservableObject {
     private var statsDate: Date
     private var statsCycleCount: UInt64
     private var uiFrameTicks = 0
+    private var lastRunTickDate: Date?
     private var lastDisplayMouseX: Int?
     private var lastDisplayMouseY: Int?
     private var lastMouseButtonDown = false
+    private static let maximumRunCatchUpInterval: TimeInterval = 0.25
+    private static let liveRunInstructionLimit = 500_000
     private static let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
@@ -145,6 +148,7 @@ final class DebuggerStore: ObservableObject {
         if case .running = runState {
             return
         }
+        lastRunTickDate = Date()
         runState = .running
         append("Running")
     }
@@ -153,21 +157,31 @@ final class DebuggerStore: ObservableObject {
         if case .running = runState {
             append("Paused")
         }
+        lastRunTickDate = nil
         runState = .paused
     }
 
-    func runContinuousTick(instructionBudget: Int = 2_000) {
+    func runContinuousTick(now: Date = Date()) {
         guard case .running = runState else {
             return
         }
 
+        let previousTick = lastRunTickDate ?? now
+        lastRunTickDate = now
+        let elapsed = max(0, min(now.timeIntervalSince(previousTick), Self.maximumRunCatchUpInterval))
+        let cycleBudget = max(1, Int((elapsed * IIGSVideoTiming.megaIICyclesPerSecond).rounded()))
+
         do {
-            let result = try session.runLiveBatch(instructionLimit: instructionBudget)
+            let result = try session.runLiveCycleBatch(
+                cycleLimit: cycleBudget,
+                instructionLimit: Self.liveRunInstructionLimit
+            )
             switch result.stopReason {
             case .instructionLimitReached:
                 refreshLive()
             case .breakpoint, .stopped, .waiting:
                 runState = .stopped(describe(result.stopReason))
+                lastRunTickDate = nil
                 append("Stopped: \(describe(result.stopReason)) PC=\(formatAddress(result.finalAddress))")
                 refreshAll()
             case .cycleLimitReached:
@@ -175,6 +189,7 @@ final class DebuggerStore: ObservableObject {
             }
         } catch {
             runState = .stopped("error")
+            lastRunTickDate = nil
             append(error, prefix: "Run failed")
             refreshAll()
         }
