@@ -159,6 +159,19 @@ final class VideoPhase6Tests: XCTestCase {
         XCTAssertEqual(frame[13, 0], .white)
     }
 
+    func testFallbackHyphenGlyphRepeatsWithoutStartupLineGaps() {
+        let memory = FlatMemoryBus()
+        memory[0x00C022] = 0xF0
+        memory[0x000400] = 0xAD
+        memory[0x000401] = 0xAD
+
+        let frame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        for x in 0..<14 {
+            XCTAssertEqual(frame[x, 3], .white)
+        }
+    }
+
     func testPrimaryCharacterSetFlashesLowRangeBytes() {
         let memory = FlatMemoryBus()
         memory[0x00C022] = 0xF0
