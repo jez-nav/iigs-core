@@ -37,6 +37,7 @@ struct DisassemblyPanel: View {
                         }
                     }
                     .padding(.vertical, 2)
+                    .accessibilityHidden(true)
                 }
                 .font(.system(.caption, design: .monospaced))
                 .textSelection(.enabled)

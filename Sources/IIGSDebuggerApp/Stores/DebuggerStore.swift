@@ -46,6 +46,11 @@ final class DebuggerStore: ObservableObject {
     private var lastDisplayMouseX: Int?
     private var lastDisplayMouseY: Int?
     private var lastMouseButtonDown = false
+    private static let repositoryRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
 
     init(session: IIGSDebuggerSession = IIGSDebuggerSession()) {
         self.parser = IIGSDebuggerCommandParser()
@@ -59,6 +64,38 @@ final class DebuggerStore: ObservableObject {
         refreshMemoryRows()
         refreshDisassemblyRows()
         append("IIGSDebugger ready")
+    }
+
+    var localROM1URL: URL? {
+        let candidates = [
+            Self.repositoryRoot.appendingPathComponent("LocalAssets/ROMs/Apple_IIGS_ROM01.bin"),
+            Self.repositoryRoot.appendingPathComponent("ROM01"),
+            Self.repositoryRoot.appendingPathComponent("ROM1"),
+            Self.repositoryRoot.appendingPathComponent("Apple_IIGS_ROM01.bin"),
+            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop/AppleIIGS/ROM1"),
+        ]
+        return candidates.first { FileManager.default.isReadableFile(atPath: $0.path) }
+    }
+
+    var canLoadLocalROM1: Bool {
+        localROM1URL != nil
+    }
+
+    func loadLocalROM1() {
+        guard let url = localROM1URL else {
+            append("Local ROM1 not found")
+            return
+        }
+        loadROM(from: url)
+    }
+
+    func bootLocalROM1() {
+        guard let url = localROM1URL else {
+            append("Local ROM1 not found")
+            return
+        }
+        loadROM(from: url)
+        run()
     }
 
     func loadROM(from url: URL) {

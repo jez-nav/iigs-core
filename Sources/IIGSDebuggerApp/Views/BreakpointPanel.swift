@@ -58,6 +58,7 @@ struct LogPanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: .infinity)
+            .accessibilityHidden(true)
             .padding(.vertical, 4)
         }
     }

@@ -93,6 +93,9 @@ private final class MachineDisplayNSView: NSView {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
+        setAccessibilityElement(true)
+        setAccessibilityRole(.image)
+        setAccessibilityLabel("Apple IIgs display")
     }
 
     required init?(coder: NSCoder) {
