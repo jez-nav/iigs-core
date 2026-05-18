@@ -3,14 +3,15 @@ import IIGSCore
 import SwiftUI
 
 struct MachineDisplayPanel: View {
-    @ObservedObject var store: DebuggerStore
+    let store: DebuggerStore
+    @ObservedObject var videoStore: DebuggerVideoStore
 
     var body: some View {
         GroupBox("Display") {
             VStack(alignment: .leading, spacing: 8) {
                 MachineDisplayView(
-                    frame: store.videoFrame,
-                    isFocused: store.displayHasKeyboardFocus,
+                    frame: videoStore.videoFrame,
+                    isFocused: videoStore.displayHasKeyboardFocus,
                     onFocusChanged: store.setDisplayFocus(_:),
                     onMouse: store.updateDisplayMouse(hostX:hostY:displayX:displayY:buttonDown:),
                     onMouseExit: store.clearHostMouse,
@@ -18,11 +19,11 @@ struct MachineDisplayPanel: View {
                     onKeyUp: store.handleKeyUp(keyCode:modifiers:)
                 )
                 .aspectRatio(
-                    displayAspectRatio(for: store.videoFrame),
+                    displayAspectRatio(for: videoStore.videoFrame),
                     contentMode: .fit
                 )
                 .overlay(alignment: .topLeading) {
-                    Text(store.displayHasKeyboardFocus ? "Input captured" : "Click display for input")
+                    Text(videoStore.displayHasKeyboardFocus ? "Input captured" : "Click display for input")
                         .font(.system(.caption2, design: .monospaced))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)

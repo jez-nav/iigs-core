@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = DebuggerStore()
-    private let uiTimer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,12 +26,7 @@ struct ContentView: View {
             }
             .accessibilityHidden(true)
         }
-        .onReceive(uiTimer) { _ in
-            if case .running = store.runState {
-                store.runContinuousTick()
-                store.noteUIRefresh()
-            }
-        }
+        .background(DebuggerWindowTitleUpdater(title: store.windowTitle))
         .onReceive(NotificationCenter.default.publisher(for: .debuggerLoadLocalROMRequested)) { _ in
             store.loadLocalROM1()
         }
@@ -55,7 +49,7 @@ struct ContentView: View {
 
     private var leftColumn: some View {
         VStack(alignment: .leading, spacing: 12) {
-            MachineDisplayPanel(store: store)
+            MachineDisplayPanel(store: store, videoStore: store.videoStore)
                 .frame(width: 560, height: 360)
 
             QuickExecutionPanel(store: store)
@@ -122,6 +116,24 @@ struct ContentView: View {
 
         if panel.runModal() == .OK, let url = panel.url {
             store.loadBinary(from: url)
+        }
+    }
+}
+
+private struct DebuggerWindowTitleUpdater: NSViewRepresentable {
+    let title: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            view.window?.title = title
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            nsView.window?.title = title
         }
     }
 }

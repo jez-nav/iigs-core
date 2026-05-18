@@ -516,6 +516,10 @@ public final class IIGSDebuggerSession {
         IIGSDebuggerSnapshot(machine: machine)
     }
 
+    public var cycleCount: UInt64 {
+        machine.memory.cycleCount
+    }
+
     public func memoryRows(bank: UInt8, startOffset: UInt16, rowCount: Int) -> [IIGSDebuggerMemoryRow] {
         let count = max(0, rowCount)
         let firstOffset = startOffset & 0xFFF0

@@ -35,10 +35,27 @@ private final class LiveRunControl: @unchecked Sendable {
 }
 
 @MainActor
+final class DebuggerVideoStore: ObservableObject {
+    @Published private(set) var videoFrame: IIGSVideoFrame
+    @Published private(set) var displayHasKeyboardFocus = false
+
+    init(frame: IIGSVideoFrame) {
+        self.videoFrame = frame
+    }
+
+    func publish(_ frame: IIGSVideoFrame) {
+        videoFrame = frame
+    }
+
+    func setDisplayFocus(_ focused: Bool) {
+        displayHasKeyboardFocus = focused
+    }
+}
+
+@MainActor
 final class DebuggerStore: ObservableObject {
     @Published var snapshot: IIGSDebuggerSnapshot
     @Published private(set) var runState: DebuggerRunState = .paused
-    @Published private(set) var videoFrame: IIGSVideoFrame
     @Published var memoryBank = "00"
     @Published var memoryRows: [IIGSDebuggerMemoryRow] = []
     @Published var memoryWriteAddress = "002000"
@@ -61,11 +78,11 @@ final class DebuggerStore: ObservableObject {
     @Published private(set) var hostMouseY: Int?
     @Published private(set) var displayMouseX: Int?
     @Published private(set) var displayMouseY: Int?
-    @Published private(set) var displayHasKeyboardFocus = false
 
     private let parser: IIGSDebuggerCommandParser
     private let session: IIGSDebuggerSession
     private let liveSession: LiveDebuggerSessionBox
+    let videoStore: DebuggerVideoStore
     private var resetDate: Date
     private var statsDate: Date
     private var statsCycleCount: UInt64
@@ -75,7 +92,7 @@ final class DebuggerStore: ObservableObject {
     private var lastDisplayMouseX: Int?
     private var lastDisplayMouseY: Int?
     private var lastMouseButtonDown = false
-    private static let livePublishInterval: TimeInterval = 1.0 / 30.0
+    private static let livePanelPublishInterval: TimeInterval = 1.0 / 12.0
     private static let liveRunInstructionLimit = 2_000_000
     private static let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -88,7 +105,7 @@ final class DebuggerStore: ObservableObject {
         self.session = session
         self.liveSession = LiveDebuggerSessionBox(session)
         self.snapshot = session.snapshot()
-        self.videoFrame = session.renderVideoFrame()
+        self.videoStore = DebuggerVideoStore(frame: session.renderVideoFrame())
         let now = Date()
         self.resetDate = now
         self.statsDate = now
@@ -96,6 +113,10 @@ final class DebuggerStore: ObservableObject {
         refreshMemoryRows()
         refreshDisassemblyRows()
         append("IIGSDebugger ready")
+    }
+
+    var windowTitle: String {
+        "IIGSDebugger - EM \(emulatorFPS) - UI \(uiFPS)"
     }
 
     var localROM1URL: URL? {
@@ -193,11 +214,6 @@ final class DebuggerStore: ObservableObject {
         runState = .paused
     }
 
-    func runContinuousTick(now: Date = Date()) {
-        // Continuous execution is owned by startLiveRunLoop(control:).  The UI timer calls
-        // this to preserve the old view contract, but emulation no longer depends on UI ticks.
-    }
-
     func runCycles() {
         pause()
         perform(.runCycles(parsedPositiveInt(runLimit, defaultValue: 1_000)))
@@ -290,7 +306,7 @@ final class DebuggerStore: ObservableObject {
 
     func refreshAll() {
         snapshot = session.snapshot()
-        videoFrame = session.renderVideoFrame()
+        videoStore.publish(session.renderVideoFrame())
         refreshMemoryRows()
         refreshDisassemblyRows()
         breakpoints = (try? session.execute(.listBreakpoints)) ?? "No breakpoints"
@@ -298,10 +314,11 @@ final class DebuggerStore: ObservableObject {
 
     func refreshLive() {
         snapshot = session.snapshot()
-        videoFrame = session.renderVideoFrame()
+        videoStore.publish(session.renderVideoFrame())
     }
 
-    func noteUIRefresh() {
+    private func noteVideoFramePublished(cycleCount: UInt64) {
+        uiFrameTicks += 1
         let now = Date()
         let elapsed = now.timeIntervalSince(statsDate)
         elapsedSinceReset = Self.formatElapsed(now.timeIntervalSince(resetDate))
@@ -309,12 +326,12 @@ final class DebuggerStore: ObservableObject {
             return
         }
 
-        let cycleDelta = snapshot.timing.cycles - statsCycleCount
+        let cycleDelta = cycleCount - statsCycleCount
         let emulatedFrames = Double(cycleDelta) / Double(IIGSVideoTiming.cyclesPerFrame)
         emulatorFPS = String(format: "%.2f fps", emulatedFrames / elapsed)
         uiFPS = String(format: "%.2f fps", Double(uiFrameTicks) / elapsed)
         statsDate = now
-        statsCycleCount = snapshot.timing.cycles
+        statsCycleCount = cycleCount
         uiFrameTicks = 0
     }
 
@@ -322,12 +339,12 @@ final class DebuggerStore: ObservableObject {
         let sessionBox = liveSession
         let cycleBudget = IIGSVideoTiming.cyclesPerFrame
         let instructionLimit = Self.liveRunInstructionLimit
-        let publishInterval = Self.livePublishInterval
+        let panelPublishInterval = Self.livePanelPublishInterval
         let frameInterval = 1.0 / IIGSVideoTiming.nominalFramesPerSecond
 
         liveRunQueue.async {
             let session = sessionBox.session
-            var nextPublish = Date()
+            var nextPanelPublish = Date()
             var nextFrameDeadline = Date().addingTimeInterval(frameInterval)
 
             while !control.isCancelled {
@@ -356,13 +373,18 @@ final class DebuggerStore: ObservableObject {
                 }
 
                 let now = Date()
-                if now >= nextPublish {
+                let latestFrame = session.renderVideoFrame()
+                let cycleCount = session.cycleCount
+                DispatchQueue.main.async { [weak self] in
+                    self?.publishLiveVideoFrame(frame: latestFrame, cycleCount: cycleCount)
+                }
+
+                if now >= nextPanelPublish {
                     let latestSnapshot = session.snapshot()
-                    let latestFrame = session.renderVideoFrame()
                     DispatchQueue.main.async { [weak self] in
-                        self?.publishLiveFrame(snapshot: latestSnapshot, frame: latestFrame)
+                        self?.publishLiveSnapshot(latestSnapshot)
                     }
-                    nextPublish = now.addingTimeInterval(publishInterval)
+                    nextPanelPublish = now.addingTimeInterval(panelPublishInterval)
                 }
 
                 let sleepDuration = nextFrameDeadline.timeIntervalSinceNow
@@ -376,13 +398,19 @@ final class DebuggerStore: ObservableObject {
         }
     }
 
-    private func publishLiveFrame(snapshot latestSnapshot: IIGSDebuggerSnapshot, frame latestFrame: IIGSVideoFrame) {
+    private func publishLiveVideoFrame(frame latestFrame: IIGSVideoFrame, cycleCount: UInt64) {
+        guard case .running = runState else {
+            return
+        }
+        videoStore.publish(latestFrame)
+        noteVideoFramePublished(cycleCount: cycleCount)
+    }
+
+    private func publishLiveSnapshot(_ latestSnapshot: IIGSDebuggerSnapshot) {
         guard case .running = runState else {
             return
         }
         snapshot = latestSnapshot
-        videoFrame = latestFrame
-        uiFrameTicks += 1
     }
 
     private func finishLiveRunStop(_ result: IIGSMachineRunResult, snapshot latestSnapshot: IIGSDebuggerSnapshot, frame latestFrame: IIGSVideoFrame) {
@@ -390,7 +418,8 @@ final class DebuggerStore: ObservableObject {
             return
         }
         snapshot = latestSnapshot
-        videoFrame = latestFrame
+        videoStore.publish(latestFrame)
+        noteVideoFramePublished(cycleCount: latestSnapshot.timing.cycles)
         runState = .stopped(describe(result.stopReason))
         liveRunControl?.cancel()
         liveRunControl = nil
@@ -437,7 +466,7 @@ final class DebuggerStore: ObservableObject {
     }
 
     func setDisplayFocus(_ focused: Bool) {
-        displayHasKeyboardFocus = focused
+        videoStore.setDisplayFocus(focused)
     }
 
     func handleKeyDown(characters: String, keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
