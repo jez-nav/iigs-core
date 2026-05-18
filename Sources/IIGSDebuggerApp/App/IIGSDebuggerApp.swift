@@ -1,115 +1,47 @@
-import AppKit
 import SwiftUI
 
 @main
-@MainActor
-final class IIGSDebuggerApp: NSObject, NSApplicationDelegate {
-    private var window: NSWindow?
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        installMenus()
-        showMainWindow()
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
-    }
-
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            showMainWindow()
+struct IIGSDebuggerApp: App {
+    var body: some Scene {
+        WindowGroup("IIGSDebugger") {
+            ContentView()
+                .frame(minWidth: 1120, minHeight: 760)
         }
-        return true
-    }
+        .commands {
+            CommandMenu("Debugger") {
+                Button("Boot Local ROM1") {
+                    NotificationCenter.default.post(name: .debuggerBootLocalROMRequested, object: nil)
+                }
+                .keyboardShortcut("b", modifiers: [.command])
 
-    private func showMainWindow() {
-        if let window {
-            window.makeKeyAndOrderFront(nil)
-            return
+                Button("Load Local ROM1") {
+                    NotificationCenter.default.post(name: .debuggerLoadLocalROMRequested, object: nil)
+                }
+                .keyboardShortcut("1", modifiers: [.command])
+
+                Divider()
+
+                Button("Step") {
+                    NotificationCenter.default.post(name: .debuggerStepRequested, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command])
+
+                Button("Run") {
+                    NotificationCenter.default.post(name: .debuggerRunRequested, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command])
+
+                Button("Pause") {
+                    NotificationCenter.default.post(name: .debuggerPauseRequested, object: nil)
+                }
+                .keyboardShortcut(".", modifiers: [.command])
+
+                Button("Reset") {
+                    NotificationCenter.default.post(name: .debuggerResetRequested, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
         }
-
-        let contentView = ContentView()
-            .frame(minWidth: 1120, minHeight: 760)
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1320, height: 860),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "IIGSDebugger"
-        window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: contentView)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        self.window = window
-    }
-
-    private func installMenus() {
-        let mainMenu = NSMenu()
-
-        let appMenuItem = NSMenuItem()
-        let appMenu = NSMenu()
-        appMenu.addItem(
-            NSMenuItem(
-                title: "Quit IIGSDebugger",
-                action: #selector(NSApplication.terminate(_:)),
-                keyEquivalent: "q"
-            )
-        )
-        appMenuItem.submenu = appMenu
-        mainMenu.addItem(appMenuItem)
-
-        let debuggerMenuItem = NSMenuItem()
-        let debuggerMenu = NSMenu(title: "Debugger")
-        addDebuggerItem("Boot Local ROM1", key: "b", action: #selector(bootLocalROM1), to: debuggerMenu)
-        addDebuggerItem("Load Local ROM1", key: "1", action: #selector(loadLocalROM1), to: debuggerMenu)
-        debuggerMenu.addItem(.separator())
-        addDebuggerItem("Step", key: "s", action: #selector(step), to: debuggerMenu)
-        addDebuggerItem("Run", key: "r", action: #selector(run), to: debuggerMenu)
-        addDebuggerItem("Pause", key: ".", action: #selector(pause), to: debuggerMenu)
-
-        let resetItem = NSMenuItem(title: "Reset", action: #selector(reset), keyEquivalent: "r")
-        resetItem.keyEquivalentModifierMask = [.command, .shift]
-        resetItem.target = self
-        debuggerMenu.addItem(resetItem)
-
-        debuggerMenuItem.submenu = debuggerMenu
-        mainMenu.addItem(debuggerMenuItem)
-
-        NSApp.mainMenu = mainMenu
-    }
-
-    private func addDebuggerItem(_ title: String, key: String, action: Selector, to menu: NSMenu) {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
-        item.keyEquivalentModifierMask = [.command]
-        item.target = self
-        menu.addItem(item)
-    }
-
-    @objc private func bootLocalROM1() {
-        NotificationCenter.default.post(name: .debuggerBootLocalROMRequested, object: nil)
-    }
-
-    @objc private func loadLocalROM1() {
-        NotificationCenter.default.post(name: .debuggerLoadLocalROMRequested, object: nil)
-    }
-
-    @objc private func step() {
-        NotificationCenter.default.post(name: .debuggerStepRequested, object: nil)
-    }
-
-    @objc private func run() {
-        NotificationCenter.default.post(name: .debuggerRunRequested, object: nil)
-    }
-
-    @objc private func pause() {
-        NotificationCenter.default.post(name: .debuggerPauseRequested, object: nil)
-    }
-
-    @objc private func reset() {
-        NotificationCenter.default.post(name: .debuggerResetRequested, object: nil)
     }
 }
 
