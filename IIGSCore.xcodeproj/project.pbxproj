@@ -24,7 +24,6 @@
 		1A000001000000000000000F /* ShadowPhase5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000116 /* ShadowPhase5Tests.swift */; };
 		1A0000010000000000000012 /* IIGSVideoTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000117 /* IIGSVideoTiming.swift */; };
 		1A0000010000000000000013 /* IIGSVideoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000118 /* IIGSVideoRenderer.swift */; };
-		1A000001000000000000004C /* IIGSCharacterGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000142 /* IIGSCharacterGenerator.swift */; };
 		1A0000010000000000000014 /* VideoPhase6Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000119 /* VideoPhase6Tests.swift */; };
 		1A0000010000000000000015 /* VideoPhase6_5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000011A /* VideoPhase6_5Tests.swift */; };
 		1A0000010000000000000016 /* IIGSADBController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000011B /* IIGSADBController.swift */; };
@@ -67,6 +66,7 @@
 		1A0000010000000000000049 /* MachineDisplayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000001000000000000013F /* MachineDisplayPanel.swift */; };
 		1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000140 /* DebuggerPhase20Tests.swift */; };
 		1A000001000000000000004B /* ROMBootConvergencePhase21Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */; };
+		1A000001000000000000004C /* IIGSCharacterGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000142 /* IIGSCharacterGenerator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -133,7 +133,6 @@
 		1A0000010000000000000116 /* ShadowPhase5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowPhase5Tests.swift; sourceTree = "<group>"; };
 		1A0000010000000000000117 /* IIGSVideoTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSVideoTiming.swift; sourceTree = "<group>"; };
 		1A0000010000000000000118 /* IIGSVideoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSVideoRenderer.swift; sourceTree = "<group>"; };
-		1A0000010000000000000142 /* IIGSCharacterGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSCharacterGenerator.swift; sourceTree = "<group>"; };
 		1A0000010000000000000119 /* VideoPhase6Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPhase6Tests.swift; sourceTree = "<group>"; };
 		1A000001000000000000011A /* VideoPhase6_5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPhase6_5Tests.swift; sourceTree = "<group>"; };
 		1A000001000000000000011B /* IIGSADBController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSADBController.swift; sourceTree = "<group>"; };
@@ -175,6 +174,7 @@
 		1A000001000000000000013F /* MachineDisplayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineDisplayPanel.swift; sourceTree = "<group>"; };
 		1A0000010000000000000140 /* DebuggerPhase20Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase20Tests.swift; sourceTree = "<group>"; };
 		1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROMBootConvergencePhase21Tests.swift; sourceTree = "<group>"; };
+		1A0000010000000000000142 /* IIGSCharacterGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSCharacterGenerator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -286,13 +286,49 @@
 			path = Machine;
 			sourceTree = "<group>";
 		};
-		1A00000100000000000000E0 /* Timing */ = {
+		1A0000010000000000000057 /* IIGSCoreTests */ = {
 			isa = PBXGroup;
 			children = (
-				1A0000010000000000000136 /* IIGSEventScheduler.swift */,
-				1A0000010000000000000137 /* IIGSInterruptState.swift */,
+				1A0000010000000000000109 /* CPUPhase1Tests.swift */,
+				1A0000010000000000000113 /* ROMPhase3Tests.swift */,
+				1A0000010000000000000115 /* SoftSwitchPhase4Tests.swift */,
+				1A0000010000000000000116 /* ShadowPhase5Tests.swift */,
+				1A0000010000000000000119 /* VideoPhase6Tests.swift */,
+				1A000001000000000000011A /* VideoPhase6_5Tests.swift */,
+				1A000001000000000000011C /* InputPhase7Tests.swift */,
+				1A0000010000000000000120 /* StoragePhase8Tests.swift */,
+				1A0000010000000000000123 /* StoragePhase9Tests.swift */,
+				1A0000010000000000000125 /* AudioPhase10Tests.swift */,
+				1A0000010000000000000126 /* MachinePhase11Tests.swift */,
+				1A0000010000000000000128 /* DebuggerPhase12Tests.swift */,
+				1A000001000000000000012B /* Phase13CLIRuntimeTests.swift */,
+				1A0000010000000000000135 /* DebuggerPhase14Tests.swift */,
+				1A0000010000000000000138 /* TimingPhase15Tests.swift */,
+				1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */,
+				1A000001000000000000013C /* DebuggerPhase19Tests.swift */,
+				1A0000010000000000000140 /* DebuggerPhase20Tests.swift */,
+				1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */,
 			);
-			path = Timing;
+			path = IIGSCoreTests;
+			sourceTree = "<group>";
+		};
+		1A0000010000000000000058 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000010000000000000057 /* IIGSCoreTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		1A0000010000000000000059 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000010000000000000110 /* IIGSCore.framework */,
+				1A0000010000000000000111 /* IIGSCoreTests.xctest */,
+				1A000001000000000000012A /* IIGSDebuggerCLI */,
+				1A0000010000000000000133 /* IIGSDebugger.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		1A000001000000000000005A /* Video */ = {
@@ -314,14 +350,6 @@
 			path = Input;
 			sourceTree = "<group>";
 		};
-		1A000001000000000000005D /* Audio */ = {
-			isa = PBXGroup;
-			children = (
-				1A0000010000000000000124 /* IIGSSoundController.swift */,
-			);
-			path = Audio;
-			sourceTree = "<group>";
-		};
 		1A000001000000000000005C /* Storage */ = {
 			isa = PBXGroup;
 			children = (
@@ -332,6 +360,14 @@
 				1A0000010000000000000122 /* IIGSIWMController.swift */,
 			);
 			path = Storage;
+			sourceTree = "<group>";
+		};
+		1A000001000000000000005D /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000010000000000000124 /* IIGSSoundController.swift */,
+			);
+			path = Audio;
 			sourceTree = "<group>";
 		};
 		1A000001000000000000005E /* Debugger */ = {
@@ -393,49 +429,13 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		1A0000010000000000000058 /* Tests */ = {
+		1A00000100000000000000E0 /* Timing */ = {
 			isa = PBXGroup;
 			children = (
-				1A0000010000000000000057 /* IIGSCoreTests */,
+				1A0000010000000000000136 /* IIGSEventScheduler.swift */,
+				1A0000010000000000000137 /* IIGSInterruptState.swift */,
 			);
-			path = Tests;
-			sourceTree = "<group>";
-		};
-		1A0000010000000000000057 /* IIGSCoreTests */ = {
-			isa = PBXGroup;
-			children = (
-				1A0000010000000000000109 /* CPUPhase1Tests.swift */,
-				1A0000010000000000000113 /* ROMPhase3Tests.swift */,
-				1A0000010000000000000115 /* SoftSwitchPhase4Tests.swift */,
-				1A0000010000000000000116 /* ShadowPhase5Tests.swift */,
-				1A0000010000000000000119 /* VideoPhase6Tests.swift */,
-				1A000001000000000000011A /* VideoPhase6_5Tests.swift */,
-				1A000001000000000000011C /* InputPhase7Tests.swift */,
-				1A0000010000000000000120 /* StoragePhase8Tests.swift */,
-				1A0000010000000000000123 /* StoragePhase9Tests.swift */,
-				1A0000010000000000000125 /* AudioPhase10Tests.swift */,
-				1A0000010000000000000126 /* MachinePhase11Tests.swift */,
-				1A0000010000000000000128 /* DebuggerPhase12Tests.swift */,
-				1A000001000000000000012B /* Phase13CLIRuntimeTests.swift */,
-				1A0000010000000000000135 /* DebuggerPhase14Tests.swift */,
-				1A0000010000000000000138 /* TimingPhase15Tests.swift */,
-				1A000001000000000000013A /* CoreCorrectnessPhase18Tests.swift */,
-				1A000001000000000000013C /* DebuggerPhase19Tests.swift */,
-				1A0000010000000000000140 /* DebuggerPhase20Tests.swift */,
-				1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */,
-			);
-			path = IIGSCoreTests;
-			sourceTree = "<group>";
-		};
-		1A0000010000000000000059 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				1A0000010000000000000110 /* IIGSCore.framework */,
-				1A0000010000000000000111 /* IIGSCoreTests.xctest */,
-				1A000001000000000000012A /* IIGSDebuggerCLI */,
-				1A0000010000000000000133 /* IIGSDebugger.app */,
-			);
-			name = Products;
+			path = Timing;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -799,7 +799,9 @@
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
