@@ -1,4 +1,5 @@
 import AppKit
+import Dispatch
 import Foundation
 import IIGSCore
 
@@ -6,6 +7,31 @@ enum DebuggerRunState: Equatable {
     case paused
     case running
     case stopped(String)
+}
+
+private final class LiveDebuggerSessionBox: @unchecked Sendable {
+    let session: IIGSDebuggerSession
+
+    init(_ session: IIGSDebuggerSession) {
+        self.session = session
+    }
+}
+
+private final class LiveRunControl: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
 }
 
 @MainActor
@@ -39,15 +65,18 @@ final class DebuggerStore: ObservableObject {
 
     private let parser: IIGSDebuggerCommandParser
     private let session: IIGSDebuggerSession
+    private let liveSession: LiveDebuggerSessionBox
     private var resetDate: Date
     private var statsDate: Date
     private var statsCycleCount: UInt64
     private var uiFrameTicks = 0
-    private var lastRunTickDate: Date?
+    private var liveRunControl: LiveRunControl?
+    private let liveRunQueue = DispatchQueue(label: "dev.local.IIGSDebugger.liveRun", qos: .userInitiated)
     private var lastDisplayMouseX: Int?
     private var lastDisplayMouseY: Int?
     private var lastMouseButtonDown = false
-    private static let maximumRunCatchUpInterval: TimeInterval = 0.25
+    private static let liveRunQuantum: TimeInterval = 1.0 / 240.0
+    private static let livePublishInterval: TimeInterval = 1.0 / 30.0
     private static let liveRunInstructionLimit = 500_000
     private static let repositoryRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -58,6 +87,7 @@ final class DebuggerStore: ObservableObject {
     init(session: IIGSDebuggerSession = IIGSDebuggerSession()) {
         self.parser = IIGSDebuggerCommandParser()
         self.session = session
+        self.liveSession = LiveDebuggerSessionBox(session)
         self.snapshot = session.snapshot()
         self.videoFrame = session.renderVideoFrame()
         let now = Date()
@@ -148,51 +178,25 @@ final class DebuggerStore: ObservableObject {
         if case .running = runState {
             return
         }
-        lastRunTickDate = Date()
+        let control = LiveRunControl()
+        liveRunControl = control
         runState = .running
         append("Running")
+        startLiveRunLoop(control: control)
     }
 
     func pause() {
         if case .running = runState {
             append("Paused")
         }
-        lastRunTickDate = nil
+        liveRunControl?.cancel()
+        liveRunControl = nil
         runState = .paused
     }
 
     func runContinuousTick(now: Date = Date()) {
-        guard case .running = runState else {
-            return
-        }
-
-        let previousTick = lastRunTickDate ?? now
-        lastRunTickDate = now
-        let elapsed = max(0, min(now.timeIntervalSince(previousTick), Self.maximumRunCatchUpInterval))
-        let cycleBudget = max(1, Int((elapsed * IIGSVideoTiming.megaIICyclesPerSecond).rounded()))
-
-        do {
-            let result = try session.runLiveCycleBatch(
-                cycleLimit: cycleBudget,
-                instructionLimit: Self.liveRunInstructionLimit
-            )
-            switch result.stopReason {
-            case .instructionLimitReached:
-                refreshLive()
-            case .breakpoint, .stopped, .waiting:
-                runState = .stopped(describe(result.stopReason))
-                lastRunTickDate = nil
-                append("Stopped: \(describe(result.stopReason)) PC=\(formatAddress(result.finalAddress))")
-                refreshAll()
-            case .cycleLimitReached:
-                refreshLive()
-            }
-        } catch {
-            runState = .stopped("error")
-            lastRunTickDate = nil
-            append(error, prefix: "Run failed")
-            refreshAll()
-        }
+        // Continuous execution is owned by startLiveRunLoop(control:).  The UI timer calls
+        // this to preserve the old view contract, but emulation no longer depends on UI ticks.
     }
 
     func runCycles() {
@@ -307,7 +311,6 @@ final class DebuggerStore: ObservableObject {
             return
         }
 
-        snapshot = session.snapshot()
         let cycleDelta = snapshot.timing.cycles - statsCycleCount
         let emulatedFrames = Double(cycleDelta) / Double(IIGSVideoTiming.cyclesPerFrame)
         emulatorFPS = String(format: "%.2f fps", emulatedFrames / elapsed)
@@ -315,6 +318,90 @@ final class DebuggerStore: ObservableObject {
         statsDate = now
         statsCycleCount = snapshot.timing.cycles
         uiFrameTicks = 0
+    }
+
+    private func startLiveRunLoop(control: LiveRunControl) {
+        let sessionBox = liveSession
+        let cycleBudget = max(1, Int((Self.liveRunQuantum * IIGSVideoTiming.megaIICyclesPerSecond).rounded()))
+        let instructionLimit = Self.liveRunInstructionLimit
+        let quantum = Self.liveRunQuantum
+        let publishInterval = Self.livePublishInterval
+
+        liveRunQueue.async {
+            let session = sessionBox.session
+            var nextPublish = Date()
+
+            while !control.isCancelled {
+                let loopStart = Date()
+                let outcome: Result<IIGSMachineRunResult, Error>
+                do {
+                    outcome = .success(try session.runLiveCycleBatch(cycleLimit: cycleBudget, instructionLimit: instructionLimit))
+                } catch {
+                    outcome = .failure(error)
+                }
+
+                switch outcome {
+                case let .success(result):
+                    if result.stopReason != .cycleLimitReached && result.stopReason != .instructionLimitReached {
+                        let latestSnapshot = session.snapshot()
+                        let latestFrame = session.renderVideoFrame()
+                        DispatchQueue.main.async { [weak self] in
+                            self?.finishLiveRunStop(result, snapshot: latestSnapshot, frame: latestFrame)
+                        }
+                        return
+                    }
+                case let .failure(error):
+                    DispatchQueue.main.async { [weak self] in
+                        self?.finishLiveRunFailure(error)
+                    }
+                    return
+                }
+
+                let now = Date()
+                if now >= nextPublish {
+                    let latestSnapshot = session.snapshot()
+                    let latestFrame = session.renderVideoFrame()
+                    DispatchQueue.main.async { [weak self] in
+                        self?.publishLiveFrame(snapshot: latestSnapshot, frame: latestFrame)
+                    }
+                    nextPublish = now.addingTimeInterval(publishInterval)
+                }
+
+                let elapsed = Date().timeIntervalSince(loopStart)
+                if elapsed < quantum {
+                    Thread.sleep(forTimeInterval: quantum - elapsed)
+                }
+            }
+        }
+    }
+
+    private func publishLiveFrame(snapshot latestSnapshot: IIGSDebuggerSnapshot, frame latestFrame: IIGSVideoFrame) {
+        guard case .running = runState else {
+            return
+        }
+        snapshot = latestSnapshot
+        videoFrame = latestFrame
+    }
+
+    private func finishLiveRunStop(_ result: IIGSMachineRunResult, snapshot latestSnapshot: IIGSDebuggerSnapshot, frame latestFrame: IIGSVideoFrame) {
+        guard case .running = runState else {
+            return
+        }
+        snapshot = latestSnapshot
+        videoFrame = latestFrame
+        runState = .stopped(describe(result.stopReason))
+        liveRunControl?.cancel()
+        liveRunControl = nil
+        append("Stopped: \(describe(result.stopReason)) PC=\(formatAddress(result.finalAddress))")
+        refreshAll()
+    }
+
+    private func finishLiveRunFailure(_ error: Error) {
+        runState = .stopped("error")
+        liveRunControl?.cancel()
+        liveRunControl = nil
+        append(error, prefix: "Run failed")
+        refreshAll()
     }
 
     func updateDisplayMouse(hostX: Int, hostY: Int, displayX: Int, displayY: Int, buttonDown: Bool) {
