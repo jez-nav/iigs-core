@@ -34,6 +34,43 @@ final class CPUPhase1Tests: XCTestCase {
         XCTAssertEqual(registers.programCounter, 0x0202)
     }
 
+    func testEmulationIRQPushesBreakClearStatusByte() throws {
+        let machine = machineWithProgram([
+            0x58, // CLI
+            0xEA, // NOP, should be interrupted before execution.
+        ])
+        machine.memory[0x00FFFE] = 0x00
+        machine.memory[0x00FFFF] = 0x90
+        machine.reset()
+
+        try machine.step()
+        machine.cpu.signal(.irq)
+        try machine.step()
+
+        XCTAssertEqual(machine.cpu.registers.programCounter, 0x9000)
+        XCTAssertEqual(machine.cpu.registers.stackPointer, 0x01FC)
+        XCTAssertEqual(machine.memory.peek8(at: 0x0001FD), 0x20)
+        XCTAssertEqual(machine.memory.peek8(at: 0x0001FE), 0x01)
+        XCTAssertEqual(machine.memory.peek8(at: 0x0001FF), 0x02)
+    }
+
+    func testEmulationBRKPushesBreakSetStatusByte() throws {
+        let machine = machineWithProgram([
+            0x00, 0x00, // BRK signature byte
+        ])
+        machine.memory[0x00FFFE] = 0x00
+        machine.memory[0x00FFFF] = 0x90
+        machine.reset()
+
+        try machine.step()
+
+        XCTAssertEqual(machine.cpu.registers.programCounter, 0x9000)
+        XCTAssertEqual(machine.cpu.registers.stackPointer, 0x01FC)
+        XCTAssertEqual(machine.memory.peek8(at: 0x0001FD), 0x34)
+        XCTAssertEqual(machine.memory.peek8(at: 0x0001FE), 0x02)
+        XCTAssertEqual(machine.memory.peek8(at: 0x0001FF), 0x02)
+    }
+
     func testREPSEPControlRegisterWidthsAndIndexTruncation() throws {
         let machine = machineWithProgram([
             0x18,             // CLC
@@ -109,6 +146,29 @@ final class CPUPhase1Tests: XCTestCase {
 
         XCTAssertEqual(machine.cpu.registers.accumulator & 0x00FF, 0x7F)
         XCTAssertEqual(cycles, 4)
+    }
+
+    func testNativeIndexedIndirectDirectPageUsesFullSixteenBitPointerAddress() throws {
+        let machine = machineWithProgram([
+            0x18,             // CLC
+            0xFB,             // XCE
+            0xC2, 0x30,       // REP #$30
+            0xA2, 0x34, 0x01, // LDX #$0134
+            0xA9, 0x00, 0x00, // LDA #$0000
+            0xA1, 0xF0,       // LDA ($F0,X)
+        ])
+        machine.memory[0x001524] = 0x00
+        machine.memory[0x001525] = 0x20
+        machine.memory[0x002000] = 0xCD
+        machine.memory[0x002001] = 0xAB
+        machine.reset()
+        machine.cpu.updateRegisters { registers in
+            registers.directPage = 0x1300
+        }
+
+        try machine.run(instructionLimit: 6)
+
+        XCTAssertEqual(machine.cpu.registers.accumulator, 0xABCD)
     }
 
     func testJSRAndRTSUseEmulationStack() throws {
@@ -380,6 +440,28 @@ final class CPUPhase1Tests: XCTestCase {
         XCTAssertFalse(machine.cpu.registers.status.contains(.interruptDisable))
     }
 
+    func testIIGSInterruptVectorsPullFromROMWhenIOShadowingIsEnabled() throws {
+        var romBytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
+        romBytes[0x1FFFC] = 0x00
+        romBytes[0x1FFFD] = 0x80
+        romBytes[0x1FFEE] = 0x00
+        romBytes[0x1FFEF] = 0x90
+        let machine = IIGSMachine(romImage: try IIGSROMImage(bytes: romBytes))
+        machine.reset(.cold)
+        machine.cpu.updateRegisters {
+            $0.emulationMode = false
+            $0.status = ProcessorStatus(rawValue: 0)
+            $0.programBank = 0
+            $0.programCounter = 0x0200
+        }
+
+        machine.cpu.signal(.irq)
+        try machine.step()
+
+        XCTAssertEqual(machine.cpu.registers.programBank, 0)
+        XCTAssertEqual(machine.cpu.registers.programCounter, 0x9000)
+    }
+
     func testPhase2WAIIdlesUntilInterrupt() throws {
         let machine = machineWithProgram([
             0x18, // CLC
@@ -405,6 +487,22 @@ final class CPUPhase1Tests: XCTestCase {
 
         XCTAssertFalse(machine.cpu.isWaiting)
         XCTAssertEqual(machine.cpu.registers.programCounter, 0x9000)
+    }
+
+    func testWAIDoesNotSleepWhenIRQLineIsAlreadyAssertedAndMasked() throws {
+        let machine = machineWithProgram([
+            0x78, // SEI
+            0xCB, // WAI
+            0xEA, // NOP
+        ])
+        machine.reset()
+        machine.memory[0x00C041] = IIGSInterruptState.verticalBlankMask
+        machine.memory.setVerticalBlankInterruptPending()
+
+        try machine.run(instructionLimit: 3)
+
+        XCTAssertFalse(machine.cpu.isWaiting)
+        XCTAssertEqual(machine.cpu.registers.programCounter, 0x0203)
     }
 
     func testPhase2MVNCopiesOneByteAndRepeatsUntilAccumulatorUnderflows() throws {

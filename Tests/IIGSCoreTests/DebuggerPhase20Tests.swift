@@ -8,8 +8,8 @@ final class DebuggerPhase20Tests: XCTestCase {
 
         let frame = session.renderVideoFrame()
 
-        XCTAssertEqual(frame.width, IIGSVideoRenderer.superHiresWidth)
-        XCTAssertEqual(frame.height, IIGSVideoRenderer.superHiresHeight)
+        XCTAssertEqual(frame.width, IIGSVideoRenderer.superHiresWidth + IIGSVideoRenderer.wideBorderX * 2)
+        XCTAssertEqual(frame.height, IIGSVideoRenderer.superHiresHeight + IIGSVideoRenderer.superHiresBorderY * 2)
         XCTAssertEqual(frame.pixels.count, frame.width * frame.height)
     }
 
@@ -23,8 +23,8 @@ final class DebuggerPhase20Tests: XCTestCase {
         let frame = session.renderVideoFrame()
 
         XCTAssertEqual(session.machine.memory.debugRead8(at: 0xE12000), 0x11)
-        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
-        XCTAssertEqual(frame[1, 0], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
+        XCTAssertEqual(frame[IIGSVideoRenderer.wideBorderX, IIGSVideoRenderer.superHiresBorderY], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
+        XCTAssertEqual(frame[IIGSVideoRenderer.wideBorderX + 1, IIGSVideoRenderer.superHiresBorderY], IIGSRGBColor(red: 0xFF, green: 0x00, blue: 0x00))
     }
 
     func testDebuggerSessionKeyboardInputFeedsAppleIIAndADBQueues() {
@@ -41,6 +41,15 @@ final class DebuggerPhase20Tests: XCTestCase {
         session.injectKeyboardInput(ascii: nil, keyCode: 0x00, modifiers: [], isKeyUp: true)
         session.machine.memory[0x00C026] = 0x2C
         XCTAssertEqual(session.machine.memory[0x00C026], 0x80)
+    }
+
+    func testDebuggerSessionControlResetRunsMachineReset() throws {
+        let session = IIGSDebuggerSession(machine: IIGSMachine(romImage: try makeROM(resetVector: 0x9000)))
+
+        session.injectKeyboardInput(ascii: nil, keyCode: 0x7F, modifiers: [.control], isKeyUp: false)
+
+        XCTAssertEqual(session.machine.currentProgramAddress, 0x009000)
+        XCTAssertEqual(session.machine.memory.adbController.modifierRegister & IIGSADBModifiers.control.rawValue, IIGSADBModifiers.control.rawValue)
     }
 
     func testDebuggerSessionMouseInputFeedsADBMouseQueue() {

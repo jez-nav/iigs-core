@@ -66,6 +66,23 @@ final class ROMPhase3Tests: XCTestCase {
         XCTAssertEqual(memory[0x00C10D], 0x45)
     }
 
+    func testC07xIRQHandlerWindowReadsFromROM() throws {
+        var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
+        bytes[0x1C071] = 0x08
+        bytes[0x1C074] = 0xEA
+        bytes[0x1C07F] = 0x6B
+        let rom = try IIGSROMImage(bytes: bytes)
+        let memory = FlatMemoryBus(size: 0x020000)
+
+        memory.installROM(rom)
+
+        XCTAssertEqual(memory[0x00C071], 0x08)
+        XCTAssertEqual(memory[0x00C074], 0xEA)
+        XCTAssertEqual(memory[0x01C07F], 0x6B)
+        XCTAssertEqual(memory[0xE1C074], 0xEA)
+        XCTAssertEqual(memory.debugRead8(at: 0x00C074), 0xEA)
+    }
+
     func testResetUsesInstalledROMVector() throws {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[0x1FFFC] = 0x78

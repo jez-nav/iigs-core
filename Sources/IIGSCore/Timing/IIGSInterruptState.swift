@@ -1,6 +1,7 @@
 public struct IIGSInterruptState: Equatable, Sendable {
     public static let verticalBlankMask: UInt8 = 0x08
     public static let quarterSecondMask: UInt8 = 0x10
+    public static let systemIRQLineMask: UInt8 = 0x01
     public static let c023AnyPendingMask: UInt8 = 0x80
     public static let c023OneSecondPendingMask: UInt8 = 0x40
     public static let c023ScanlinePendingMask: UInt8 = 0x20
@@ -70,6 +71,17 @@ public struct IIGSInterruptState: Equatable, Sendable {
 
     public mutating func clearC023Status(mask: UInt8) {
         let clearMask = mask == 0 ? Self.c023ScanlinePendingMask | Self.c023OneSecondPendingMask : mask
+        c023PendingRegister &= ~clearMask
+    }
+
+    public mutating func clearC023StatusForC032(value: UInt8) {
+        var clearMask: UInt8 = 0
+        if value & Self.c023ScanlinePendingMask == 0 {
+            clearMask |= Self.c023ScanlinePendingMask
+        }
+        if value & Self.c023OneSecondPendingMask == 0 {
+            clearMask |= Self.c023OneSecondPendingMask
+        }
         c023PendingRegister &= ~clearMask
     }
 }

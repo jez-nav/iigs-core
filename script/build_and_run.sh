@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
-APP_NAME="IIGSDebugger"
-BUNDLE_ID="dev.local.IIGSDebugger"
+MODE="run"
+APP_NAME="${APP_NAME:-IIGSDebugger}"
+
+if [[ $# -gt 0 ]]; then
+  case "$1" in
+    IIGSDebugger|VideoTest|ADBTest|DiskTest)
+      APP_NAME="$1"
+      shift
+      ;;
+  esac
+fi
+
+if [[ $# -gt 0 ]]; then
+  MODE="$1"
+fi
+
+BUNDLE_ID="dev.local.$APP_NAME"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DERIVED_DATA="$ROOT_DIR/Build/DerivedData"
@@ -41,10 +55,10 @@ case "$MODE" in
   --verify|verify)
     open_app
     sleep 2
-    pgrep -x "$APP_NAME" >/dev/null
+    pgrep -f "$APP_BINARY" >/dev/null
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [IIGSDebugger|VideoTest|ADBTest|DiskTest] [run|--debug|--logs|--telemetry|--verify]" >&2
     exit 2
     ;;
 esac

@@ -10,10 +10,10 @@ final class VideoPhase6_5Tests: XCTestCase {
 
         let frame = IIGSVideoRenderer.renderFrame(from: memory)
 
-        XCTAssertEqual(frame.width, 280)
-        XCTAssertEqual(frame.height, 192)
-        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0xDD, green: 0x00, blue: 0x33))
-        XCTAssertEqual(frame[0, 4], IIGSRGBColor(red: 0x00, green: 0x00, blue: 0x99))
+        XCTAssertEqual(frame.width, 320)
+        XCTAssertEqual(frame.height, 240)
+        XCTAssertEqual(frame[20, 24], IIGSRGBColor(red: 0xDD, green: 0x00, blue: 0x33))
+        XCTAssertEqual(frame[20, 28], IIGSRGBColor(red: 0x00, green: 0x00, blue: 0x99))
     }
 
     func testClassicLoresUsesAppleTextPageLayout() {
@@ -83,8 +83,8 @@ final class VideoPhase6_5Tests: XCTestCase {
 
         let frame = IIGSVideoRenderer.renderFrame(from: memory)
 
-        XCTAssertEqual(frame[0, 0], .white)
-        XCTAssertEqual(frame.width, IIGSVideoRenderer.classicGraphicsWidth)
-        XCTAssertEqual(frame.height, IIGSVideoRenderer.classicGraphicsHeight)
+        XCTAssertEqual(frame[IIGSVideoRenderer.classicBorderX, IIGSVideoRenderer.classicBorderY], .white)
+        XCTAssertEqual(frame.width, IIGSVideoRenderer.classicGraphicsWidth + IIGSVideoRenderer.classicBorderX * 2)
+        XCTAssertEqual(frame.height, IIGSVideoRenderer.classicGraphicsHeight + IIGSVideoRenderer.classicBorderY * 2)
     }
 }

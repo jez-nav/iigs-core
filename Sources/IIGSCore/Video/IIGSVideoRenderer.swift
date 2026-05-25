@@ -48,22 +48,29 @@ public enum IIGSVideoRenderer {
     public static let classicGraphicsHeight = 192
     public static let classicTextCellWidth = 7
     public static let classicTextCellHeight = 8
+    public static let classicBorderX = 20
+    public static let classicBorderY = 24
+    public static let wideBorderX = 40
+    public static let superHiresBorderY = 20
 
     private static let superHiresPixelBase: UInt32 = 0xE12000
     private static let superHiresSCBBase: UInt32 = 0xE19D00
     private static let superHiresPaletteBase: UInt32 = 0xE19E00
 
     public static func renderFrame(from memory: FlatMemoryBus) -> IIGSVideoFrame {
+        let activeFrame: IIGSVideoFrame
         if memory.softSwitches.videoControl & 0x80 != 0 {
-            return renderSuperHires(from: memory)
-        }
-        if !memory.softSwitches.textMode {
+            activeFrame = renderSuperHires(from: memory)
+        } else if !memory.softSwitches.textMode {
             if memory.softSwitches.hires {
-                return renderClassicHires(from: memory)
+                activeFrame = renderClassicHires(from: memory)
+            } else {
+                activeFrame = renderClassicLores(from: memory)
             }
-            return renderClassicLores(from: memory)
+        } else {
+            activeFrame = renderClassicText(from: memory)
         }
-        return renderClassicText(from: memory)
+        return addBorder(to: activeFrame, from: memory)
     }
 
     public static func renderSuperHires(from memory: FlatMemoryBus) -> IIGSVideoFrame {
@@ -115,6 +122,15 @@ public enum IIGSVideoRenderer {
 
         if memory.softSwitches.mixedMode {
             drawClassicTextRows(from: memory, rows: 20..<24, destinationStartY: 160, columns: 40, into: &frame)
+            drawFirmwareCursor(
+                from: memory,
+                columns: 40,
+                rowRange: 20..<24,
+                destinationStartY: 160,
+                foreground: classicColor(memory.softSwitches.textColor >> 4),
+                background: classicColor(memory.softSwitches.textColor & 0x0F),
+                into: &frame
+            )
         }
 
         return frame
@@ -143,6 +159,15 @@ public enum IIGSVideoRenderer {
 
         if memory.softSwitches.mixedMode {
             drawClassicTextRows(from: memory, rows: 20..<24, destinationStartY: 160, columns: 40, into: &frame)
+            drawFirmwareCursor(
+                from: memory,
+                columns: 40,
+                rowRange: 20..<24,
+                destinationStartY: 160,
+                foreground: foreground,
+                background: background,
+                into: &frame
+            )
         }
 
         return frame
@@ -177,6 +202,16 @@ public enum IIGSVideoRenderer {
                 drawTextCell(glyph: glyph, column: column, row: row, foreground: foreground, background: background, into: &frame)
             }
         }
+
+        drawFirmwareCursor(
+            from: memory,
+            columns: columns,
+            rowRange: 0..<rows,
+            destinationStartY: 0,
+            foreground: foreground,
+            background: background,
+            into: &frame
+        )
 
         return frame
     }
@@ -346,6 +381,71 @@ public enum IIGSVideoRenderer {
                 }
             }
         }
+    }
+
+    private static func drawFirmwareCursor(
+        from memory: FlatMemoryBus,
+        columns: Int,
+        rowRange: Range<Int>,
+        destinationStartY: Int,
+        foreground: IIGSRGBColor,
+        background: IIGSRGBColor,
+        into frame: inout IIGSVideoFrame
+    ) {
+        guard classicTextFlashPhase(from: memory) else {
+            return
+        }
+        guard memory.peek8(at: 0x000033) != 0 else {
+            return
+        }
+
+        let column = Int(memory.peek8(at: 0x000024))
+        let row = Int(memory.peek8(at: 0x000025))
+        guard (0..<columns).contains(column), rowRange.contains(row) else {
+            return
+        }
+
+        let startX = column * classicTextCellWidth
+        let startY = destinationStartY + (row - rowRange.lowerBound) * classicTextCellHeight
+        let glyph = memory.characterGenerator.glyph(forCode: 0x7F)
+        for cellY in 0..<classicTextCellHeight where startY + cellY < frame.height {
+            for cellX in 0..<classicTextCellWidth where startX + cellX < frame.width {
+                frame[startX + cellX, startY + cellY] = glyph.pixelLit(x: cellX, y: cellY) ? foreground : background
+            }
+        }
+    }
+
+    private static func addBorder(to activeFrame: IIGSVideoFrame, from memory: FlatMemoryBus) -> IIGSVideoFrame {
+        let horizontalBorder = activeFrame.width >= 560 ? wideBorderX : classicBorderX
+        let verticalBorder = activeFrame.height == superHiresHeight ? superHiresBorderY : classicBorderY
+        let width = activeFrame.width + horizontalBorder * 2
+        let height = activeFrame.height + verticalBorder * 2
+        var frame = IIGSVideoFrame(
+            width: width,
+            height: height,
+            pixels: Array(repeating: .black, count: width * height)
+        )
+
+        for y in 0..<height {
+            let color = borderColor(forOutputLine: y, from: memory)
+            for x in 0..<width {
+                frame[x, y] = color
+            }
+        }
+
+        for y in 0..<activeFrame.height {
+            for x in 0..<activeFrame.width {
+                frame[x + horizontalBorder, y + verticalBorder] = activeFrame[x, y]
+            }
+        }
+
+        return frame
+    }
+
+    private static func borderColor(forOutputLine line: Int, from memory: FlatMemoryBus) -> IIGSRGBColor {
+        let scanline = min(line, IIGSVideoTiming.scanlinesPerFrame - 1)
+        let colorIndex = memory.softSwitches.displayBorderColors[scanline]
+        return classicColor(colorIndex)
     }
 
     private static func classicGlyphRows(for byte: UInt8) -> [UInt8] {

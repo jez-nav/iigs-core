@@ -24,6 +24,23 @@ final class MachinePhase11Tests: XCTestCase {
         XCTAssertEqual(machine.memory[0x002000], 0x5A)
     }
 
+    func testPowerCycleClearsRAMAndPreservesMountedStorage() throws {
+        let machine = IIGSMachine(romImage: try makeROM(.rom01, resetVector: 0x8000))
+        let blockDevice = try IIGSBlockDevice.raw(bytes: Array(repeating: 0, count: 512))
+        let floppy = try IIGSFloppyMedia(raw5_25: Array(repeating: 0, count: IIGSFloppyMedia.raw5_25ByteCount))
+        machine.memory[0x002000] = 0x5A
+        machine.mountSmartPortDevice(blockDevice, unit: 1)
+        machine.mountFloppyMedia(floppy, drive: 1)
+
+        machine.powerCycle()
+
+        XCTAssertEqual(machine.lastResetKind, .cold)
+        XCTAssertEqual(machine.currentProgramAddress, 0x008000)
+        XCTAssertEqual(machine.memory[0x002000], 0x00)
+        XCTAssertNotNil(machine.smartPortController.device(unit: 1))
+        XCTAssertNotNil(machine.memory.iwmController.drive1.media)
+    }
+
     func testInstallROMFromBytesSupportsROMLoadAPI() throws {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[bytes.count - 4] = 0x34

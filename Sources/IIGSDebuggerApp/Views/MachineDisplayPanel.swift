@@ -15,8 +15,7 @@ struct MachineDisplayPanel: View {
                     onFocusChanged: store.setDisplayFocus(_:),
                     onMouse: store.updateDisplayMouse(hostX:hostY:displayX:displayY:buttonDown:),
                     onMouseExit: store.clearHostMouse,
-                    onKeyDown: store.handleKeyDown(characters:keyCode:modifiers:),
-                    onKeyUp: store.handleKeyUp(keyCode:modifiers:)
+                    onKeyEvent: store.handleKeyEvent(_:)
                 )
                 .aspectRatio(
                     displayAspectRatio(for: videoStore.videoFrame),
@@ -51,16 +50,14 @@ private struct MachineDisplayView: NSViewRepresentable {
     let onFocusChanged: (Bool) -> Void
     let onMouse: (Int, Int, Int, Int, Bool) -> Void
     let onMouseExit: () -> Void
-    let onKeyDown: (String, UInt16, NSEvent.ModifierFlags) -> Void
-    let onKeyUp: (UInt16, NSEvent.ModifierFlags) -> Void
+    let onKeyEvent: (IIGSHostKeyEvent) -> Void
 
     func makeNSView(context: Context) -> MachineDisplayNSView {
         let view = MachineDisplayNSView()
         view.onFocusChanged = onFocusChanged
         view.onMouse = onMouse
         view.onMouseExit = onMouseExit
-        view.onKeyDown = onKeyDown
-        view.onKeyUp = onKeyUp
+        view.onKeyEvent = onKeyEvent
         view.frameBuffer = frame
         return view
     }
@@ -70,8 +67,7 @@ private struct MachineDisplayView: NSViewRepresentable {
         nsView.onFocusChanged = onFocusChanged
         nsView.onMouse = onMouse
         nsView.onMouseExit = onMouseExit
-        nsView.onKeyDown = onKeyDown
-        nsView.onKeyUp = onKeyUp
+        nsView.onKeyEvent = onKeyEvent
         if isFocused, nsView.window?.firstResponder !== nsView {
             nsView.window?.makeFirstResponder(nsView)
         }
@@ -89,8 +85,7 @@ private final class MachineDisplayNSView: NSView {
     var onFocusChanged: ((Bool) -> Void)?
     var onMouse: ((Int, Int, Int, Int, Bool) -> Void)?
     var onMouseExit: (() -> Void)?
-    var onKeyDown: ((String, UInt16, NSEvent.ModifierFlags) -> Void)?
-    var onKeyUp: ((UInt16, NSEvent.ModifierFlags) -> Void)?
+    var onKeyEvent: ((IIGSHostKeyEvent) -> Void)?
 
     private var cachedImage: CGImage?
     private var trackingArea: NSTrackingArea?
@@ -171,11 +166,32 @@ private final class MachineDisplayNSView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
-        onKeyDown?(event.characters ?? event.charactersIgnoringModifiers ?? "", event.keyCode, event.modifierFlags)
+        for input in MacKeyboardInputMapper.keyDownEvents(from: event) {
+            onKeyEvent?(input)
+        }
     }
 
     override func keyUp(with event: NSEvent) {
-        onKeyUp?(event.keyCode, event.modifierFlags)
+        for input in MacKeyboardInputMapper.keyUpEvents(from: event) {
+            onKeyEvent?(input)
+        }
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        if let input = MacKeyboardInputMapper.flagsChanged(from: event) {
+            onKeyEvent?(input)
+        }
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let events = MacKeyboardInputMapper.keyEquivalentEvents(from: event)
+        guard !events.isEmpty else {
+            return super.performKeyEquivalent(with: event)
+        }
+        for event in events {
+            onKeyEvent?(event)
+        }
+        return true
     }
 
     private func sendMouse(_ event: NSEvent, buttonDown: Bool) {
@@ -188,28 +204,30 @@ private final class MachineDisplayNSView: NSView {
     }
 
     private func makeImage(from frame: IIGSVideoFrame) -> CGImage {
-        var bytes: [UInt8] = []
-        bytes.reserveCapacity(frame.width * frame.height * 4)
-        for pixel in frame.pixels {
-            bytes.append(pixel.red)
-            bytes.append(pixel.green)
-            bytes.append(pixel.blue)
-            bytes.append(0xFF)
-        }
-
-        let provider = CGDataProvider(data: Data(bytes) as CFData)
-        return CGImage(
+        let byteCount = frame.width * frame.height * 4
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let context = CGContext(
+            data: nil,
             width: frame.width,
             height: frame.height,
             bitsPerComponent: 8,
-            bitsPerPixel: 32,
             bytesPerRow: frame.width * 4,
             space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
-            provider: provider!,
-            decode: nil,
-            shouldInterpolate: false,
-            intent: .defaultIntent
-        )!
+            bitmapInfo: bitmapInfo
+        ), let data = context.data else {
+            fatalError("Unable to allocate Apple IIgs video bitmap")
+        }
+
+        let pixels = data.bindMemory(to: UInt8.self, capacity: byteCount)
+        var offset = 0
+        for pixel in frame.pixels {
+            pixels[offset] = pixel.red
+            pixels[offset + 1] = pixel.green
+            pixels[offset + 2] = pixel.blue
+            pixels[offset + 3] = 0xFF
+            offset += 4
+        }
+
+        return context.makeImage()!
     }
 }

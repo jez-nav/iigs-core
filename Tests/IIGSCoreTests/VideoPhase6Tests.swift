@@ -199,6 +199,49 @@ final class VideoPhase6Tests: XCTestCase {
         XCTAssertEqual(frame[2, 0], .black)
     }
 
+    func testFlashingSpaceRendersAsBlinkingCursorBlock() {
+        let memory = FlatMemoryBus()
+        memory[0x00C022] = 0xF0
+        memory[0x000400] = 0x60
+
+        let offFrame = IIGSVideoRenderer.renderClassicText(from: memory)
+        XCTAssertEqual(offFrame[0, 0], .black)
+
+        memory.idle(cycles: IIGSVideoTiming.cyclesPerFrame * 30)
+        let onFrame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        XCTAssertEqual(onFrame[0, 0], .white)
+        XCTAssertEqual(onFrame[6, 7], .white)
+    }
+
+    func testFallbackCharacterGeneratorProvidesCheckerboardCursorGlyph() {
+        let generator = IIGSCharacterGenerator()
+        let glyph = generator.glyph(forCode: 0x7F)
+
+        XCTAssertTrue(glyph.pixelLit(x: 0, y: 0))
+        XCTAssertFalse(glyph.pixelLit(x: 1, y: 0))
+        XCTAssertFalse(glyph.pixelLit(x: 0, y: 1))
+        XCTAssertTrue(glyph.pixelLit(x: 1, y: 1))
+    }
+
+    func testClassicTextRendererOverlaysFirmwareCursorFromZeroPage() {
+        let memory = FlatMemoryBus()
+        memory[0x00C022] = 0xF0
+        memory[0x000400] = 0xA0
+        memory[0x000024] = 1
+        memory[0x000025] = 0
+        memory[0x000033] = 0xDD
+        memory.idle(cycles: IIGSVideoTiming.cyclesPerFrame * 30)
+
+        let frame = IIGSVideoRenderer.renderClassicText(from: memory)
+
+        XCTAssertEqual(frame[7, 0], .white)
+        XCTAssertEqual(frame[8, 0], .black)
+        XCTAssertEqual(frame[7, 1], .black)
+        XCTAssertEqual(frame[8, 1], .white)
+        XCTAssertEqual(frame[0, 0], .black)
+    }
+
     func testFallbackCharacterGeneratorKeepsLowercaseDistinct() {
         let generator = IIGSCharacterGenerator()
         let uppercaseA = generator.glyph(forScreenByte: 0xC1, alternateCharacterSet: false)
@@ -215,8 +258,56 @@ final class VideoPhase6Tests: XCTestCase {
 
         let frame = IIGSVideoRenderer.renderFrame(from: memory)
 
-        XCTAssertEqual(frame.width, IIGSVideoRenderer.superHiresWidth)
-        XCTAssertEqual(frame.height, IIGSVideoRenderer.superHiresHeight)
+        XCTAssertEqual(frame.width, IIGSVideoRenderer.superHiresWidth + IIGSVideoRenderer.wideBorderX * 2)
+        XCTAssertEqual(frame.height, IIGSVideoRenderer.superHiresHeight + IIGSVideoRenderer.superHiresBorderY * 2)
+    }
+
+    func testRenderFrameAddsBorderUsingC034Color() {
+        let memory = FlatMemoryBus()
+        memory[0x00C034] = 0x0D
+        memory[0x000400] = 0xA0
+
+        let frame = IIGSVideoRenderer.renderFrame(from: memory)
+
+        XCTAssertEqual(frame.width, IIGSVideoRenderer.classicGraphicsWidth + IIGSVideoRenderer.classicBorderX * 2)
+        XCTAssertEqual(frame.height, IIGSVideoRenderer.classicGraphicsHeight + IIGSVideoRenderer.classicBorderY * 2)
+        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0xFF, green: 0xFF, blue: 0x00))
+        XCTAssertEqual(frame[IIGSVideoRenderer.classicBorderX, IIGSVideoRenderer.classicBorderY], IIGSRGBColor(red: 0x22, green: 0x22, blue: 0xFF))
+    }
+
+    func testBorderColorCanVaryByScanline() {
+        let memory = FlatMemoryBus()
+        memory[0x00C034] = 0x01
+        memory.idle(cycles: IIGSVideoTiming.cyclesPerLine)
+        memory[0x00C034] = 0x0D
+
+        let frame = IIGSVideoRenderer.renderFrame(from: memory)
+
+        XCTAssertEqual(frame[0, 0], IIGSRGBColor(red: 0xDD, green: 0x00, blue: 0x33))
+        XCTAssertEqual(frame[0, 1], IIGSRGBColor(red: 0xFF, green: 0xFF, blue: 0x00))
+    }
+
+    func testBorderColorCanFollowVideoCounterLoop() throws {
+        let machine = IIGSMachine()
+        let program: [UInt8] = [
+            0xAD, 0x2E, 0xC0, // LDA $C02E
+            0x8D, 0x34, 0xC0, // STA $C034
+            0x80, 0xF8        // BRA $0300
+        ]
+        for (offset, byte) in program.enumerated() {
+            machine.memory[0x000300 + UInt32(offset)] = byte
+        }
+        machine.cpu.updateRegisters { registers in
+            registers.programCounter = 0x0300
+        }
+
+        try machine.runForCycles(
+            IIGSVideoTiming.cyclesPerFrame + IIGSVideoTiming.cyclesPerLine,
+            instructionLimit: 20_000
+        )
+
+        let visibleColors = Set(machine.memory.softSwitches.displayBorderColors.prefix(IIGSVideoTiming.classicVisibleLines))
+        XCTAssertGreaterThan(visibleColors.count, 1)
     }
 
     private func writePaletteEntry(_ entry: Int, raw: UInt16, to memory: FlatMemoryBus, palette: Int = 0) {

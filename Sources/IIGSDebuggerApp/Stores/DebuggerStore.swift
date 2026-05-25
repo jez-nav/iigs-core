@@ -326,6 +326,15 @@ final class DebuggerStore: ObservableObject {
             return
         }
 
+        guard cycleCount >= statsCycleCount else {
+            statsDate = now
+            statsCycleCount = cycleCount
+            uiFrameTicks = 0
+            emulatorFPS = "0.00 fps"
+            uiFPS = "0.00 fps"
+            return
+        }
+
         let cycleDelta = cycleCount - statsCycleCount
         let emulatedFrames = Double(cycleDelta) / Double(IIGSVideoTiming.cyclesPerFrame)
         emulatorFPS = String(format: "%.2f fps", emulatedFrames / elapsed)
@@ -469,32 +478,8 @@ final class DebuggerStore: ObservableObject {
         videoStore.setDisplayFocus(focused)
     }
 
-    func handleKeyDown(characters: String, keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
-        if let ascii = appleIIASCII(from: characters, keyCode: keyCode) {
-            session.injectKeyboardInput(
-                ascii: ascii,
-                keyCode: UInt8(truncatingIfNeeded: keyCode),
-                modifiers: adbModifiers(from: modifiers),
-                isKeyUp: false
-            )
-        } else {
-            session.injectKeyboardInput(
-                ascii: nil,
-                keyCode: UInt8(truncatingIfNeeded: keyCode),
-                modifiers: adbModifiers(from: modifiers),
-                isKeyUp: false
-            )
-        }
-        snapshot = session.snapshot()
-    }
-
-    func handleKeyUp(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
-        session.injectKeyboardInput(
-            ascii: nil,
-            keyCode: UInt8(truncatingIfNeeded: keyCode),
-            modifiers: adbModifiers(from: modifiers),
-            isKeyUp: true
-        )
+    func handleKeyEvent(_ event: IIGSHostKeyEvent) {
+        event.apply(to: session)
         snapshot = session.snapshot()
     }
 
@@ -553,52 +538,6 @@ final class DebuggerStore: ObservableObject {
 
     private func clampMouseDelta(_ value: Int) -> Int8 {
         Int8(max(Int(Int8.min), min(Int(Int8.max), value)))
-    }
-
-    private func appleIIASCII(from characters: String, keyCode: UInt16) -> UInt8? {
-        switch keyCode {
-        case 36, 76:
-            return 0x0D
-        case 48:
-            return 0x09
-        case 51, 117:
-            return 0x7F
-        case 53:
-            return 0x1B
-        case 123:
-            return 0x08
-        case 124:
-            return 0x15
-        case 125:
-            return 0x0A
-        case 126:
-            return 0x0B
-        default:
-            guard let scalar = characters.unicodeScalars.first, scalar.value <= 0x7F else {
-                return nil
-            }
-            return UInt8(scalar.value)
-        }
-    }
-
-    private func adbModifiers(from flags: NSEvent.ModifierFlags) -> IIGSADBModifiers {
-        var modifiers: IIGSADBModifiers = []
-        if flags.contains(.shift) {
-            modifiers.insert(.shift)
-        }
-        if flags.contains(.control) {
-            modifiers.insert(.control)
-        }
-        if flags.contains(.option) {
-            modifiers.insert(.option)
-        }
-        if flags.contains(.command) {
-            modifiers.insert(.command)
-        }
-        if flags.contains(.capsLock) {
-            modifiers.insert(.capsLock)
-        }
-        return modifiers
     }
 
     private func append(_ line: String) {

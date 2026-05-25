@@ -7,9 +7,9 @@ public struct IIGSADBModifiers: OptionSet, Equatable, Sendable {
 
     public static let shift = IIGSADBModifiers(rawValue: 0x01)
     public static let control = IIGSADBModifiers(rawValue: 0x02)
-    public static let option = IIGSADBModifiers(rawValue: 0x04)
-    public static let command = IIGSADBModifiers(rawValue: 0x08)
-    public static let capsLock = IIGSADBModifiers(rawValue: 0x10)
+    public static let capsLock = IIGSADBModifiers(rawValue: 0x04)
+    public static let option = IIGSADBModifiers(rawValue: 0x40)
+    public static let command = IIGSADBModifiers(rawValue: 0x80)
 }
 
 public final class IIGSADBController {
@@ -23,6 +23,7 @@ public final class IIGSADBController {
     private var traceContext: String?
     private var keyboardLatch: UInt8 = 0
     private var keyboardStrobe = false
+    private var appleIIKeyBuffer: [AppleIIKeyPress] = []
     private var responseHeader: UInt8?
     private var responseQueue: [UInt8] = []
     private var keyboardEvents: [UInt8] = []
@@ -90,6 +91,7 @@ public final class IIGSADBController {
         modifierRegister = 0
         keyboardLatch = 0
         keyboardStrobe = false
+        appleIIKeyBuffer.removeAll()
         mouseX = 0
         mouseY = 0
         mouseButtonDown = false
@@ -105,9 +107,12 @@ public final class IIGSADBController {
     }
 
     public func injectAppleIIKey(_ ascii: UInt8, modifiers: IIGSADBModifiers = []) {
-        keyboardLatch = ascii & 0x7F
-        keyboardStrobe = true
-        modifierRegister = modifiers.rawValue
+        let keyPress = AppleIIKeyPress(ascii: ascii & 0x7F, modifiers: modifiers)
+        if keyboardStrobe {
+            appleIIKeyBuffer.append(keyPress)
+        } else {
+            presentAppleIIKey(keyPress)
+        }
     }
 
     public func setModifiers(_ modifiers: IIGSADBModifiers) {
@@ -133,7 +138,10 @@ public final class IIGSADBController {
     }
 
     func readKeyboardData() -> UInt8 {
-        keyboardStrobe ? keyboardLatch | 0x80 : keyboardLatch
+        if !keyboardStrobe, !appleIIKeyBuffer.isEmpty {
+            presentAppleIIKey(appleIIKeyBuffer.removeFirst())
+        }
+        return keyboardStrobe ? keyboardLatch | 0x80 : keyboardLatch
     }
 
     func clearKeyboardStrobe() {
@@ -417,9 +425,16 @@ public final class IIGSADBController {
 
     private func flushKeyboard() {
         keyboardEvents.removeAll()
+        appleIIKeyBuffer.removeAll()
         keyboardLatch = 0
         keyboardStrobe = false
         commandFull = false
+    }
+
+    private func presentAppleIIKey(_ keyPress: AppleIIKeyPress) {
+        keyboardLatch = keyPress.ascii
+        keyboardStrobe = true
+        modifierRegister = keyPress.modifiers.rawValue
     }
 
     private func abortCommand() {
@@ -521,5 +536,10 @@ public final class IIGSADBController {
         case discard(expectedCount: Int, bytes: [UInt8])
         case listenRegister3(deviceAddress: UInt8)
         case listenRegister3Value(deviceAddress: UInt8, firstByte: UInt8)
+    }
+
+    private struct AppleIIKeyPress {
+        let ascii: UInt8
+        let modifiers: IIGSADBModifiers
     }
 }

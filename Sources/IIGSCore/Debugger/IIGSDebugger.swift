@@ -547,9 +547,15 @@ public final class IIGSDebuggerSession {
     }
 
     public func injectKeyboardInput(ascii: UInt8?, keyCode: UInt8, modifiers: IIGSADBModifiers, isKeyUp: Bool) {
-        machine.memory.adbController.setModifiers(modifiers)
+        if !isKeyUp, keyCode == 0x7F, modifiers.contains(.control) {
+            machine.reset(.warm)
+            machine.memory.adbController.setModifiers(modifiers)
+            return
+        }
         if !isKeyUp, let ascii {
             machine.injectAppleIIKey(ascii, modifiers: modifiers)
+        } else {
+            machine.memory.adbController.setModifiers(modifiers)
         }
         machine.queueKeyboardEvent(keyCode: keyCode, isKeyUp: isKeyUp)
     }

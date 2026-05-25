@@ -45,6 +45,7 @@ final class TimingPhase15Tests: XCTestCase {
         machine.advanceCycles(vblStart - Int(machine.memory.cycleCount))
 
         XCTAssertEqual(machine.memory[0x00C046] & IIGSInterruptState.verticalBlankMask, IIGSInterruptState.verticalBlankMask)
+        XCTAssertEqual(machine.memory[0x00C046] & IIGSInterruptState.systemIRQLineMask, IIGSInterruptState.systemIRQLineMask)
         XCTAssertEqual(machine.memory[0x00C046] & 0x80, 0, "ROM 01 branches into diagnostics if $C046 exposes VBL on the sign bit.")
         XCTAssertTrue(machine.memory.irqLineAsserted)
 

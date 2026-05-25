@@ -15,6 +15,51 @@ final class InputPhase7Tests: XCTestCase {
         XCTAssertEqual(memory[0x00C000], 0x41)
     }
 
+    func testAppleIIKeyboardBuffersTypedCharactersUntilFirmwareClearsStrobe() {
+        let memory = FlatMemoryBus()
+
+        memory.adbController.injectAppleIIKey(0x41, modifiers: [.shift])
+        memory.adbController.injectAppleIIKey(0x42)
+        memory.adbController.injectAppleIIKey(0x43, modifiers: [.control])
+
+        XCTAssertEqual(memory[0x00C000], 0xC1)
+        XCTAssertEqual(memory[0x00C025] & IIGSADBModifiers.shift.rawValue, IIGSADBModifiers.shift.rawValue)
+
+        _ = memory[0x00C010]
+
+        XCTAssertEqual(memory[0x00C000], 0xC2)
+        XCTAssertEqual(memory[0x00C025] & IIGSADBModifiers.shift.rawValue, 0x00)
+
+        _ = memory[0x00C010]
+
+        XCTAssertEqual(memory[0x00C000], 0xC3)
+        XCTAssertEqual(memory[0x00C025] & IIGSADBModifiers.control.rawValue, IIGSADBModifiers.control.rawValue)
+
+        _ = memory[0x00C010]
+
+        XCTAssertEqual(memory[0x00C000], 0x43)
+    }
+
+    func testAppleIIKeyboardBufferDoesNotAdvanceOnRepeatedStrobeClears() {
+        let memory = FlatMemoryBus()
+
+        memory.adbController.injectAppleIIKey(0x41)
+        memory.adbController.injectAppleIIKey(0x42)
+        memory.adbController.injectAppleIIKey(0x43)
+
+        XCTAssertEqual(memory[0x00C000], 0xC1)
+
+        _ = memory[0x00C010]
+        _ = memory[0x00C010]
+        _ = memory[0x00C010]
+
+        XCTAssertEqual(memory[0x00C000], 0xC2)
+
+        _ = memory[0x00C010]
+
+        XCTAssertEqual(memory[0x00C000], 0xC3)
+    }
+
     func testAppleIIKeyboardModifierRegisterTracksControlKey() {
         let memory = FlatMemoryBus()
 

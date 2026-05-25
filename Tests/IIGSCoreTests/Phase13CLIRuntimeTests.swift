@@ -186,10 +186,12 @@ final class Phase13CLIRuntimeTests: XCTestCase {
         set FFFD 80
         reset
         set C023 02
+        set C029 80
+        set E19D01 40
         cycles 65
         assert status irq 1
         assert mem C023 A2
-        set C032 20
+        set C032 DF
         assert mem C023 02
         """)
         defer {

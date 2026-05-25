@@ -37,6 +37,7 @@ public final class IIGSMachine {
     public private(set) var lastResetKind: IIGSResetKind?
     public private(set) var servicedDeviceEvents: [IIGSFiredEvent] = []
     public private(set) var recentProgramCounters: [UInt32] = []
+    public internal(set) var mountedDiskImages: [IIGSDiskMountTarget: IIGSMountedDiskInfo] = [:]
 
     public init(memorySize: Int = FlatMemoryBus.fullAddressSpaceSize, romImage: IIGSROMImage? = nil) {
         let scheduler = IIGSEventScheduler()
@@ -66,6 +67,17 @@ public final class IIGSMachine {
         scheduler.reset(to: 0)
         scheduleVideoEvents()
         memory.resetHardware(kind)
+        recentProgramCounters.removeAll(keepingCapacity: true)
+        cpu.reset(using: memory)
+        serviceScheduledEvents()
+    }
+
+    public func powerCycle(clearRAMWith value: UInt8 = 0) {
+        lastResetKind = .cold
+        scheduler.reset(to: 0)
+        scheduleVideoEvents()
+        memory.clearRAM(fill: value)
+        memory.resetHardware(.cold)
         recentProgramCounters.removeAll(keepingCapacity: true)
         cpu.reset(using: memory)
         serviceScheduledEvents()
@@ -304,7 +316,8 @@ public final class IIGSMachine {
         for event in scheduler.drainFiredEvents() {
             switch event.kind {
             case .videoScanline:
-                memory.setScanlineInterruptPending()
+                let line = IIGSVideoTiming.position(atCycle: event.cycle).line
+                memory.setScanlineInterruptPending(line: line)
             case .verticalBlankStart:
                 memory.setVerticalBlankInterruptPending()
             case .clockTick:

@@ -1,7 +1,9 @@
 public final class FlatMemoryBus: IIGSBus {
     public static let fullAddressSpaceSize = 0x0100_0000
+    public static let maximumExpansionRAMSize = 0x0080_0000
 
     private var bytes: [UInt8]
+    private let logicalRAMSize: Int
     private let scheduler: IIGSEventScheduler?
     public private(set) var romImage: IIGSROMImage?
     public private(set) var softSwitches = IIGSSoftSwitchState()
@@ -11,6 +13,7 @@ public final class FlatMemoryBus: IIGSBus {
     public let iwmController = IIGSIWMController()
     public let soundController = IIGSSoundController()
     public private(set) var paddleController = IIGSPaddleController()
+    public private(set) var debugIOTrace: [String] = []
     private var realTimeClock = IIGSRealTimeClock()
 
     public private(set) var cycleCount: UInt64 = 0
@@ -19,6 +22,7 @@ public final class FlatMemoryBus: IIGSBus {
     public init(size: Int = FlatMemoryBus.fullAddressSpaceSize, scheduler: IIGSEventScheduler? = nil) {
         precondition(size > 0 && size <= FlatMemoryBus.fullAddressSpaceSize)
         self.bytes = Array(repeating: 0, count: size)
+        self.logicalRAMSize = min(size, FlatMemoryBus.maximumExpansionRAMSize)
         self.scheduler = scheduler
     }
 
@@ -35,7 +39,7 @@ public final class FlatMemoryBus: IIGSBus {
             return romByte
         }
         let index = storageIndex(for: address, isWrite: false)
-        guard index < bytes.count else {
+        guard isBackedRAM(address: address, storageIndex: index) else {
             return 0xFF
         }
         return bytes[index]
@@ -53,11 +57,13 @@ public final class FlatMemoryBus: IIGSBus {
         if isReadOnlyROM(at: address) {
             return
         }
-        if isLanguageCardAddress(address), romImage != nil, !softSwitches.languageCardWriteEnabled {
+        if isLanguageCardRAMWriteProtectedAddress(address),
+           romImage != nil,
+           !softSwitches.languageCardWriteEnabled {
             return
         }
         let index = storageIndex(for: address, isWrite: true)
-        guard index < bytes.count else {
+        guard isBackedRAM(address: address, storageIndex: index) else {
             return
         }
         bytes[index] = value
@@ -95,6 +101,21 @@ public final class FlatMemoryBus: IIGSBus {
         interruptState.setScanlinePending()
     }
 
+    public func setScanlineInterruptPending(line: Int) {
+        guard softSwitches.videoControl & 0x80 != 0,
+              (0..<IIGSVideoTiming.superHiresVisibleLines).contains(line)
+        else {
+            return
+        }
+
+        let scb = peek8(at: 0xE19D00 + UInt32(line))
+        guard scb & 0x40 != 0 else {
+            return
+        }
+
+        interruptState.setScanlinePending()
+    }
+
     public func setOneSecondInterruptPending() {
         interruptState.setOneSecondPending()
     }
@@ -108,6 +129,7 @@ public final class FlatMemoryBus: IIGSBus {
             return
         }
         cycleCount += cycles
+        softSwitches.advanceVideoFrame(toCycle: cycleCount)
         scheduler?.advance(to: cycleCount)
     }
 
@@ -121,6 +143,9 @@ public final class FlatMemoryBus: IIGSBus {
 
     public func debugRead8(at address: UInt32) -> UInt8 {
         let address = masked24(address)
+        if let c07xROMByte = readC07xROMByte(at: address) {
+            return c07xROMByte
+        }
         if let slotFirmwareByte = readSlotFirmwareByte(at: address) {
             return slotFirmwareByte
         }
@@ -128,10 +153,22 @@ public final class FlatMemoryBus: IIGSBus {
             return romByte
         }
         let index = storageIndex(for: address, isWrite: false)
-        guard index < bytes.count else {
+        guard isBackedRAM(address: address, storageIndex: index) else {
             return 0xFF
         }
         return bytes[index]
+    }
+
+    public func interruptVectorAddress(_ address: UInt32) -> UInt32 {
+        let address = masked24(address)
+        let lowAddress = UInt16(address & 0xFFFF)
+        guard romImage != nil,
+              (0xFFE4...0xFFFF).contains(lowAddress),
+              softSwitches.shadowInhibit & 0x40 == 0
+        else {
+            return address
+        }
+        return 0xFF0000 | UInt32(lowAddress)
     }
 
     public func load(_ values: [UInt8], at startAddress: UInt32) {
@@ -158,6 +195,30 @@ public final class FlatMemoryBus: IIGSBus {
         romImage = nil
     }
 
+    public func clearRAM(fill value: UInt8 = 0) {
+        bytes = Array(repeating: value, count: bytes.count)
+    }
+
+    public var batteryRAMSnapshot: [UInt8] {
+        realTimeClock.parameterRAMSnapshot
+    }
+
+    public var batteryRAMRevision: UInt64 {
+        realTimeClock.parameterRAMRevision
+    }
+
+    public var batteryRAMChecksumIsValid: Bool {
+        realTimeClock.parameterRAMChecksumIsValid
+    }
+
+    public func loadBatteryRAM(_ bytes: [UInt8]) {
+        realTimeClock.loadParameterRAM(bytes)
+    }
+
+    public func setBatteryRAMByte(_ value: UInt8, at index: UInt8, updateChecksum: Bool = true) {
+        realTimeClock.setParameterRAMByte(value, at: index, updateChecksum: updateChecksum)
+    }
+
     public func resetHardware(_ kind: IIGSResetKind = .cold) {
         cycleCount = 0
         softSwitches = IIGSSoftSwitchState()
@@ -166,6 +227,7 @@ public final class FlatMemoryBus: IIGSBus {
             softSwitches.setROMVersion(version)
         }
         interruptState = IIGSInterruptState()
+        debugIOTrace.removeAll(keepingCapacity: true)
         adbController.reset()
         iwmController.reset()
         soundController.reset()
@@ -181,7 +243,7 @@ public final class FlatMemoryBus: IIGSBus {
     }
 
     private func readROMByte(at address: UInt32) -> UInt8? {
-        if isLanguageCardAddress(address), softSwitches.languageCardReadROM {
+        if usesLanguageCardROMOverlay(address), softSwitches.languageCardReadROM {
             return romImage?.byte(languageCardAddress: UInt16(address & 0xFFFF))
         }
         return romImage?.byte(mappedAt: address)
@@ -199,7 +261,7 @@ public final class FlatMemoryBus: IIGSBus {
         if romImage?.contains(mappedAddress: address) == true {
             return true
         }
-        return isLanguageCardAddress(address) && romImage != nil && softSwitches.languageCardReadROM
+        return usesLanguageCardROMOverlay(address) && romImage != nil && softSwitches.languageCardReadROM
     }
 
     private func storageIndex(for address: UInt32, isWrite: Bool) -> Int {
@@ -208,12 +270,16 @@ public final class FlatMemoryBus: IIGSBus {
         if let slowIndex = slowMemoryStorageIndex(forBank: bank, lowAddress: lowAddress) {
             return slowIndex
         }
+        if isLanguageCardAddress(address) {
+            return languageCardStorageIndex(forBank: bank, lowAddress: lowAddress)
+        }
+
         guard bank == 0x00 else {
             return Int(address)
         }
 
-        if lowAddress < 0x0200, softSwitches.alternateZeroPage {
-            return 0x010000 + Int(lowAddress)
+        if lowAddress < 0x0200 {
+            return (softSwitches.alternateZeroPage ? 0x010000 : 0) + Int(lowAddress)
         }
 
         if lowAddress < 0xC000 {
@@ -223,48 +289,82 @@ public final class FlatMemoryBus: IIGSBus {
             }
         }
 
-        if lowAddress >= 0xD000 {
-            return languageCardStorageIndex(for: lowAddress)
+        return Int(address)
+    }
+
+    private func isBackedRAM(address: UInt32, storageIndex: Int) -> Bool {
+        guard storageIndex < bytes.count else {
+            return false
         }
 
-        return Int(address)
+        let bank = UInt8((address >> 16) & 0xFF)
+        switch bank {
+        case 0x00...0x7F:
+            return storageIndex < logicalRAMSize
+        case 0xE0, 0xE1:
+            return true
+        default:
+            return false
+        }
     }
 
     private func slowMemoryStorageIndex(forBank bank: UInt8, lowAddress: UInt16) -> Int? {
         switch bank {
-        case 0xE0:
+        case 0xE0, 0xE1:
             guard lowAddress < 0xC000 else {
                 return nil
             }
-            if classicShadowInhibitMask(for: lowAddress) != nil {
-                return Int(0xE00000 + UInt32(lowAddress))
-            }
-            return Int(lowAddress)
-        case 0xE1:
-            guard lowAddress < 0xC000 else {
-                return nil
-            }
-            if (0x2000...0x9FFF).contains(lowAddress) {
-                return Int(0xE10000 + UInt32(lowAddress))
-            }
-            return Int(0x010000 + UInt32(lowAddress))
+            return Int((UInt32(bank) << 16) | UInt32(lowAddress))
         default:
             return nil
         }
     }
 
-    private func languageCardStorageIndex(for lowAddress: UInt16) -> Int {
-        if lowAddress < 0xE000 {
-            let bankBase = softSwitches.languageCardBank2 ? 0x010000 : 0x000000
-            return bankBase + Int(lowAddress)
+    private func languageCardStorageIndex(forBank bank: UInt8, lowAddress: UInt16) -> Int {
+        let mappedBank: UInt8
+        switch bank {
+        case 0x00:
+            mappedBank = softSwitches.alternateZeroPage ? 0x01 : 0x00
+        case 0x01:
+            mappedBank = 0x01
+        case 0xE0, 0xE1:
+            mappedBank = bank
+        default:
+            mappedBank = bank
         }
-        return Int(lowAddress)
+
+        var mappedLowAddress = lowAddress
+        if lowAddress < 0xE000, !softSwitches.languageCardBank2 {
+            mappedLowAddress &-= 0x1000
+        }
+        return Int(UInt32(mappedBank) << 16 | UInt32(mappedLowAddress))
     }
 
     private func isLanguageCardAddress(_ address: UInt32) -> Bool {
         let bank = UInt8((address >> 16) & 0xFF)
         let lowAddress = UInt16(address & 0xFFFF)
-        return bank == 0x00 && lowAddress >= 0xD000
+        switch bank {
+        case 0x00, 0x01, 0xE0, 0xE1:
+            return lowAddress >= 0xD000
+        default:
+            return false
+        }
+    }
+
+    private func usesLanguageCardROMOverlay(_ address: UInt32) -> Bool {
+        let bank = UInt8((address >> 16) & 0xFF)
+        guard bank == 0x00 || bank == 0x01 else {
+            return false
+        }
+        return isLanguageCardAddress(address) && softSwitches.shadowInhibit & 0x40 == 0
+    }
+
+    private func isLanguageCardRAMWriteProtectedAddress(_ address: UInt32) -> Bool {
+        let bank = UInt8((address >> 16) & 0xFF)
+        guard bank == 0x00 || bank == 0x01 else {
+            return false
+        }
+        return isLanguageCardAddress(address) && softSwitches.shadowInhibit & 0x40 == 0
     }
 
     private func isSlotFirmwareAddress(_ address: UInt32) -> Bool {
@@ -282,13 +382,20 @@ public final class FlatMemoryBus: IIGSBus {
         guard isIOPageAddress(address) else {
             return nil
         }
+        if let c07xROMByte = readC07xROMByte(at: address) {
+            return c07xROMByte
+        }
         let lowAddress = UInt16(address & 0xFFFF)
         if (0xC080...0xC08F).contains(lowAddress) {
             softSwitches.accessLanguageCardSwitch(lowAddress)
             return 0
         }
         if (0xC0E0...0xC0EF).contains(lowAddress) {
-            return iwmController.accessSwitch(offset: UInt8(lowAddress & 0x000F))
+            return iwmController.accessSwitch(
+                offset: UInt8(lowAddress & 0x000F),
+                cycle: cycleCount,
+                context: traceProgramCounter.map { "PC \(hex24($0))" }
+            )
         }
 
         switch lowAddress {
@@ -326,6 +433,7 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC021:
             return 0
         case 0xC023:
+            traceIO("R C023 \(hexByte(interruptState.c023StatusRegister))")
             return interruptState.c023StatusRegister
         case 0xC022:
             return softSwitches.textColor
@@ -342,8 +450,10 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC029:
             return softSwitches.videoControl
         case 0xC02E:
+            interruptState.clearC023Status(mask: IIGSInterruptState.c023ScanlinePendingMask)
             return IIGSVideoTiming.verticalCounter(atCycle: cycleCount)
         case 0xC02F:
+            interruptState.clearC023Status(mask: IIGSInterruptState.c023ScanlinePendingMask)
             return IIGSVideoTiming.horizontalCounter(atCycle: cycleCount)
         case 0xC030:
             return soundController.toggleSpeaker(atCycle: cycleCount)
@@ -364,10 +474,14 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC03F:
             return soundController.readPointerHigh()
         case 0xC041:
+            traceIO("R C041 \(hexByte(interruptState.enableRegister))")
             return interruptState.enableRegister
         case 0xC046:
-            return interruptState.videoStatusRegister
+            let value = interruptState.videoStatusRegister | (irqLineAsserted ? IIGSInterruptState.systemIRQLineMask : 0)
+            traceIO("R C046 \(hexByte(value))")
+            return value
         case 0xC047:
+            traceIO("R C047 clear")
             interruptState.clearAllVideoStatus()
             return 0
         case 0xC060:
@@ -407,7 +521,13 @@ public final class FlatMemoryBus: IIGSBus {
             return true
         }
         if (0xC0E0...0xC0EF).contains(lowAddress) {
-            _ = iwmController.accessSwitch(offset: UInt8(lowAddress & 0x000F), value: value, isWrite: true)
+            _ = iwmController.accessSwitch(
+                offset: UInt8(lowAddress & 0x000F),
+                value: value,
+                isWrite: true,
+                cycle: cycleCount,
+                context: traceProgramCounter.map { "PC \(hex24($0))" }
+            )
             return true
         }
 
@@ -417,6 +537,7 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC022:
             softSwitches.textColor = value
         case 0xC023:
+            traceIO("W C023 \(hexByte(value))")
             interruptState.c023EnableRegister = value
         case 0xC026:
             adbController.setTraceContext(traceProgramCounter.map { "PC \(hex24($0))" })
@@ -431,11 +552,13 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC031:
             iwmController.writeDriveControlRegister(value)
         case 0xC032:
-            interruptState.clearC023Status(mask: value)
+            traceIO("W C032 \(hexByte(value))")
+            interruptState.clearC023StatusForC032(value: value)
         case 0xC033:
             realTimeClock.writeData(value)
         case 0xC034:
             realTimeClock.writeControl(value)
+            softSwitches.setBorderColor(value, atCycle: cycleCount)
         case 0xC030:
             _ = soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC03C:
@@ -447,10 +570,12 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC03F:
             soundController.writePointerHigh(value)
         case 0xC041:
+            traceIO("W C041 \(hexByte(value))")
             interruptState.enableRegister = value
             let disabledVideoSources = ~value & (IIGSInterruptState.verticalBlankMask | IIGSInterruptState.quarterSecondMask)
             interruptState.clearVideoStatus(mask: disabledVideoSources)
         case 0xC047:
+            traceIO("W C047 \(hexByte(value))")
             interruptState.clearVideoStatus(mask: value == 0 ? 0xFF : value)
         case 0xC035:
             softSwitches.shadowInhibit = value
@@ -479,8 +604,31 @@ public final class FlatMemoryBus: IIGSBus {
         }
     }
 
+    private func readC07xROMByte(at address: UInt32) -> UInt8? {
+        let lowAddress = UInt16(address & 0xFFFF)
+        guard isIOPageAddress(address),
+              (0xC071...0xC07F).contains(lowAddress)
+        else {
+            return nil
+        }
+        return romImage?.byte(mappedAt: 0xFF0000 | UInt32(lowAddress))
+    }
+
     private func statusByte(_ enabled: Bool) -> UInt8 {
         enabled ? 0x80 : 0x00
+    }
+
+    private func traceIO(_ message: String) {
+        let context = traceProgramCounter.map { "PC \(hex24($0)) " } ?? ""
+        debugIOTrace.append("\(cycleCount) \(context)\(message)")
+        if debugIOTrace.count > 4_096 {
+            debugIOTrace.removeFirst(debugIOTrace.count - 4_096)
+        }
+    }
+
+    private func hexByte(_ value: UInt8) -> String {
+        let text = String(value, radix: 16, uppercase: true)
+        return "$" + String(repeating: "0", count: max(0, 2 - text.count)) + text
     }
 
     private func hex24(_ value: UInt32) -> String {
@@ -584,7 +732,7 @@ public final class FlatMemoryBus: IIGSBus {
 
     private func shouldShadowSuperHires(fromBank bank: UInt8, lowAddress: UInt16) -> Bool {
         guard (0x2000...0x9FFF).contains(lowAddress),
-              softSwitches.shadowInhibit & 0x10 == 0
+              softSwitches.shadowInhibit & 0x08 == 0
         else {
             return false
         }
@@ -623,6 +771,7 @@ private struct IIGSRealTimeClock {
     private var state: TransactionState = .receiveCommand
     private var bramIndex: UInt8 = 0
     private var secondsSince1904: UInt32 = 0
+    private var revision: UInt64 = 0
     private var parameterRAM: [UInt8] = {
         var bytes = Array(repeating: UInt8(0), count: 256)
         // These are the control-panel display defaults copied by ROM startup
@@ -631,8 +780,25 @@ private struct IIGSRealTimeClock {
         bytes[0x1B] = 0x06
         bytes[0x1C] = 0x06
         bytes[0x20] = 0x01
+        bytes[0x25] = 0x00 // Slot 5 internal SmartPort / 3.5 drive firmware.
+        bytes[0x26] = 0x00 // Slot 6 internal 5.25 drive firmware.
+        bytes[0x27] = 0x01 // Slot 7 external "Your Card" unless user changes it.
+        bytes[0x28] = 0x00 // Startup Slot: scan.
+        Self.updateChecksum(in: &bytes)
         return bytes
     }()
+
+    var parameterRAMSnapshot: [UInt8] {
+        parameterRAM
+    }
+
+    var parameterRAMRevision: UInt64 {
+        revision
+    }
+
+    var parameterRAMChecksumIsValid: Bool {
+        Self.checksumIsValid(parameterRAM)
+    }
 
     mutating func readData() -> UInt8 {
         dataRegister
@@ -674,6 +840,7 @@ private struct IIGSRealTimeClock {
         case .writeBRAM:
             if !isReadOperation {
                 parameterRAM[Int(bramIndex)] = dataRegister
+                revision &+= 1
                 state = .receiveCommand
             }
         case let .readClock(index):
@@ -753,5 +920,60 @@ private struct IIGSRealTimeClock {
         } else {
             secondsSince1904 = (secondsSince1904 & 0xFFFF_FF00) | UInt32(value)
         }
+    }
+
+    mutating func loadParameterRAM(_ bytes: [UInt8]) {
+        if bytes.count == parameterRAM.count, Self.checksumIsValid(bytes) {
+            parameterRAM = bytes
+        } else {
+            parameterRAM = Self.defaultParameterRAM()
+        }
+        revision &+= 1
+        resetTransientState()
+    }
+
+    mutating func setParameterRAMByte(_ value: UInt8, at index: UInt8, updateChecksum: Bool) {
+        parameterRAM[Int(index)] = value
+        if updateChecksum {
+            Self.updateChecksum(in: &parameterRAM)
+        }
+        revision &+= 1
+    }
+
+    private static func defaultParameterRAM() -> [UInt8] {
+        let clock = IIGSRealTimeClock()
+        return clock.parameterRAM
+    }
+
+    private static func checksumIsValid(_ bytes: [UInt8]) -> Bool {
+        guard bytes.count == 256 else {
+            return false
+        }
+        let checksum = computeChecksum(bytes)
+        let stored = UInt16(bytes[0xFC]) | (UInt16(bytes[0xFD]) << 8)
+        let complement = UInt16(bytes[0xFE]) | (UInt16(bytes[0xFF]) << 8)
+        return stored == checksum && complement == (checksum ^ 0xAAAA)
+    }
+
+    private static func updateChecksum(in bytes: inout [UInt8]) {
+        guard bytes.count == 256 else {
+            return
+        }
+        let checksum = computeChecksum(bytes)
+        let complement = checksum ^ 0xAAAA
+        bytes[0xFC] = UInt8(checksum & 0xFF)
+        bytes[0xFD] = UInt8((checksum >> 8) & 0xFF)
+        bytes[0xFE] = UInt8(complement & 0xFF)
+        bytes[0xFF] = UInt8((complement >> 8) & 0xFF)
+    }
+
+    private static func computeChecksum(_ bytes: [UInt8]) -> UInt16 {
+        var checksum: UInt16 = 0
+        for index in stride(from: 0xFA, through: 0x00, by: -1) {
+            checksum = (checksum << 1) | (checksum >> 15)
+            let word = UInt16(bytes[index]) | (UInt16(bytes[index + 1]) << 8)
+            checksum = checksum &+ word
+        }
+        return checksum
     }
 }

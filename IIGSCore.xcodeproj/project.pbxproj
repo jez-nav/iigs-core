@@ -67,6 +67,8 @@
 		1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000140 /* DebuggerPhase20Tests.swift */; };
 		1A000001000000000000004B /* ROMBootConvergencePhase21Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */; };
 		1A000001000000000000004C /* IIGSCharacterGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000142 /* IIGSCharacterGenerator.swift */; };
+		1A000001000000000000004D /* IIGSDiskImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000143 /* IIGSDiskImageLoader.swift */; };
+		1A000001000000000000004E /* DiskImageLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000144 /* DiskImageLoaderTests.swift */; };
 		1A0000020000000000000001 /* VideoTestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000020000000000000101 /* VideoTestApp.swift */; };
 		1A0000020000000000000002 /* VideoTestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000020000000000000102 /* VideoTestContentView.swift */; };
 		1A0000020000000000000003 /* VideoSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000020000000000000103 /* VideoSurfaceView.swift */; };
@@ -77,6 +79,29 @@
 		1A0000020000000000000008 /* IIGSCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; };
 		1A0000020000000000000009 /* IIGSCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A000002000000000000000A /* VideoTestBootBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000020000000000000109 /* VideoTestBootBenchmarkTests.swift */; };
+		1A0000030000000000000001 /* ADBTestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000101 /* ADBTestApp.swift */; };
+		1A0000030000000000000002 /* ADBTestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000102 /* ADBTestContentView.swift */; };
+		1A0000030000000000000003 /* ADBTestVideoSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000103 /* ADBTestVideoSurfaceView.swift */; };
+		1A0000030000000000000004 /* ADBTestEmulatorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000104 /* ADBTestEmulatorStore.swift */; };
+		1A0000030000000000000005 /* ADBTestEmulatorRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000105 /* ADBTestEmulatorRunner.swift */; };
+		1A0000030000000000000006 /* ROMLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000106 /* ROMLocator.swift */; };
+		1A0000030000000000000007 /* WindowTitleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000107 /* WindowTitleUpdater.swift */; };
+		1A0000030000000000000008 /* IIGSCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; };
+		1A0000030000000000000009 /* IIGSCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1A0000040000000000000001 /* MacKeyboardInputMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000101 /* MacKeyboardInputMapper.swift */; };
+		1A0000040000000000000002 /* MacKeyboardInputMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000101 /* MacKeyboardInputMapper.swift */; };
+		1A0000040000000000000003 /* MacKeyboardInputMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000101 /* MacKeyboardInputMapper.swift */; };
+		1A0000040000000000000004 /* MacKeyboardInputMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000102 /* MacKeyboardInputMapperTests.swift */; };
+		1A0000050000000000000001 /* DiskTestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000101 /* DiskTestApp.swift */; };
+		1A0000050000000000000002 /* DiskTestContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000102 /* DiskTestContentView.swift */; };
+		1A0000050000000000000003 /* DiskTestVideoSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000103 /* DiskTestVideoSurfaceView.swift */; };
+		1A0000050000000000000004 /* DiskTestEmulatorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000104 /* DiskTestEmulatorStore.swift */; };
+		1A0000050000000000000005 /* DiskTestEmulatorRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000105 /* DiskTestEmulatorRunner.swift */; };
+		1A0000050000000000000006 /* ROMLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000106 /* ROMLocator.swift */; };
+		1A0000050000000000000007 /* WindowTitleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000107 /* WindowTitleUpdater.swift */; };
+		1A0000050000000000000008 /* IIGSCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; };
+		1A0000050000000000000009 /* IIGSCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1A000005000000000000000A /* MacKeyboardInputMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000101 /* MacKeyboardInputMapper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -115,6 +140,20 @@
 			remoteGlobalIDString = 1A0000010000000000000030;
 			remoteInfo = IIGSCore;
 		};
+		1A00000300000000000000C0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A0000010000000000000020 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1A0000010000000000000030;
+			remoteInfo = IIGSCore;
+		};
+		1A00000500000000000000C0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A0000010000000000000020 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1A0000010000000000000030;
+			remoteInfo = IIGSCore;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -136,6 +175,28 @@
 			dstSubfolderSpec = 10;
 			files = (
 				1A0000020000000000000009 /* IIGSCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000030000000000000042 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				1A0000030000000000000009 /* IIGSCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000050000000000000042 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				1A0000050000000000000009 /* IIGSCore.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -203,6 +264,8 @@
 		1A0000010000000000000140 /* DebuggerPhase20Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebuggerPhase20Tests.swift; sourceTree = "<group>"; };
 		1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROMBootConvergencePhase21Tests.swift; sourceTree = "<group>"; };
 		1A0000010000000000000142 /* IIGSCharacterGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSCharacterGenerator.swift; sourceTree = "<group>"; };
+		1A0000010000000000000143 /* IIGSDiskImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IIGSDiskImageLoader.swift; sourceTree = "<group>"; };
+		1A0000010000000000000144 /* DiskImageLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskImageLoaderTests.swift; sourceTree = "<group>"; };
 		1A0000020000000000000101 /* VideoTestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTestApp.swift; sourceTree = "<group>"; };
 		1A0000020000000000000102 /* VideoTestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTestContentView.swift; sourceTree = "<group>"; };
 		1A0000020000000000000103 /* VideoSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoSurfaceView.swift; sourceTree = "<group>"; };
@@ -212,6 +275,24 @@
 		1A0000020000000000000107 /* WindowTitleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTitleUpdater.swift; sourceTree = "<group>"; };
 		1A0000020000000000000108 /* VideoTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A0000020000000000000109 /* VideoTestBootBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTestBootBenchmarkTests.swift; sourceTree = "<group>"; };
+		1A0000030000000000000101 /* ADBTestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADBTestApp.swift; sourceTree = "<group>"; };
+		1A0000030000000000000102 /* ADBTestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADBTestContentView.swift; sourceTree = "<group>"; };
+		1A0000030000000000000103 /* ADBTestVideoSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADBTestVideoSurfaceView.swift; sourceTree = "<group>"; };
+		1A0000030000000000000104 /* ADBTestEmulatorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADBTestEmulatorStore.swift; sourceTree = "<group>"; };
+		1A0000030000000000000105 /* ADBTestEmulatorRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ADBTestEmulatorRunner.swift; sourceTree = "<group>"; };
+		1A0000030000000000000106 /* ROMLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROMLocator.swift; sourceTree = "<group>"; };
+		1A0000030000000000000107 /* WindowTitleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTitleUpdater.swift; sourceTree = "<group>"; };
+		1A0000030000000000000108 /* ADBTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ADBTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A0000040000000000000101 /* MacKeyboardInputMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacKeyboardInputMapper.swift; sourceTree = "<group>"; };
+		1A0000040000000000000102 /* MacKeyboardInputMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacKeyboardInputMapperTests.swift; sourceTree = "<group>"; };
+		1A0000050000000000000101 /* DiskTestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTestApp.swift; sourceTree = "<group>"; };
+		1A0000050000000000000102 /* DiskTestContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTestContentView.swift; sourceTree = "<group>"; };
+		1A0000050000000000000103 /* DiskTestVideoSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTestVideoSurfaceView.swift; sourceTree = "<group>"; };
+		1A0000050000000000000104 /* DiskTestEmulatorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTestEmulatorStore.swift; sourceTree = "<group>"; };
+		1A0000050000000000000105 /* DiskTestEmulatorRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTestEmulatorRunner.swift; sourceTree = "<group>"; };
+		1A0000050000000000000106 /* ROMLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROMLocator.swift; sourceTree = "<group>"; };
+		1A0000050000000000000107 /* WindowTitleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTitleUpdater.swift; sourceTree = "<group>"; };
+		1A0000050000000000000108 /* DiskTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DiskTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -254,6 +335,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1A0000030000000000000041 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A0000030000000000000008 /* IIGSCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000050000000000000041 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A0000050000000000000008 /* IIGSCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -270,9 +367,12 @@
 			isa = PBXGroup;
 			children = (
 				1A0000010000000000000052 /* IIGSCore */,
+				1A00000400000000000000D0 /* IIGSHostInput */,
 				1A000001000000000000005F /* IIGSDebuggerCLI */,
 				1A00000100000000000000D0 /* IIGSDebuggerApp */,
 				1A00000200000000000000D0 /* VideoTest */,
+				1A00000300000000000000D0 /* ADBTest */,
+				1A00000500000000000000D0 /* DiskTest */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -354,7 +454,9 @@
 				1A000001000000000000013C /* DebuggerPhase19Tests.swift */,
 				1A0000010000000000000140 /* DebuggerPhase20Tests.swift */,
 				1A0000010000000000000141 /* ROMBootConvergencePhase21Tests.swift */,
+				1A0000010000000000000144 /* DiskImageLoaderTests.swift */,
 				1A0000020000000000000109 /* VideoTestBootBenchmarkTests.swift */,
+				1A0000040000000000000102 /* MacKeyboardInputMapperTests.swift */,
 			);
 			path = IIGSCoreTests;
 			sourceTree = "<group>";
@@ -375,6 +477,8 @@
 				1A000001000000000000012A /* IIGSDebuggerCLI */,
 				1A0000010000000000000133 /* IIGSDebugger.app */,
 				1A0000020000000000000108 /* VideoTest.app */,
+				1A0000030000000000000108 /* ADBTest.app */,
+				1A0000050000000000000108 /* DiskTest.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -406,6 +510,7 @@
 				1A000001000000000000011F /* IIGSSmartPortController.swift */,
 				1A0000010000000000000121 /* IIGSFloppyMedia.swift */,
 				1A0000010000000000000122 /* IIGSIWMController.swift */,
+				1A0000010000000000000143 /* IIGSDiskImageLoader.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -540,6 +645,122 @@
 			path = Support;
 			sourceTree = "<group>";
 		};
+		1A00000300000000000000D0 /* ADBTest */ = {
+			isa = PBXGroup;
+			children = (
+				1A00000300000000000000D1 /* App */,
+				1A00000300000000000000D2 /* Stores */,
+				1A00000300000000000000D3 /* Views */,
+				1A00000300000000000000D4 /* Services */,
+				1A00000300000000000000D5 /* Support */,
+			);
+			path = ADBTest;
+			sourceTree = "<group>";
+		};
+		1A00000300000000000000D1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000030000000000000101 /* ADBTestApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		1A00000300000000000000D2 /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000030000000000000104 /* ADBTestEmulatorStore.swift */,
+			);
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		1A00000300000000000000D3 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000030000000000000102 /* ADBTestContentView.swift */,
+				1A0000030000000000000103 /* ADBTestVideoSurfaceView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		1A00000300000000000000D4 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000030000000000000105 /* ADBTestEmulatorRunner.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		1A00000300000000000000D5 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000030000000000000106 /* ROMLocator.swift */,
+				1A0000030000000000000107 /* WindowTitleUpdater.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		1A00000400000000000000D0 /* IIGSHostInput */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000040000000000000101 /* MacKeyboardInputMapper.swift */,
+			);
+			path = IIGSHostInput;
+			sourceTree = "<group>";
+		};
+		1A00000500000000000000D0 /* DiskTest */ = {
+			isa = PBXGroup;
+			children = (
+				1A00000500000000000000D1 /* App */,
+				1A00000500000000000000D2 /* Stores */,
+				1A00000500000000000000D3 /* Views */,
+				1A00000500000000000000D4 /* Services */,
+				1A00000500000000000000D5 /* Support */,
+			);
+			path = DiskTest;
+			sourceTree = "<group>";
+		};
+		1A00000500000000000000D1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000050000000000000101 /* DiskTestApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		1A00000500000000000000D2 /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000050000000000000104 /* DiskTestEmulatorStore.swift */,
+			);
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		1A00000500000000000000D3 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000050000000000000102 /* DiskTestContentView.swift */,
+				1A0000050000000000000103 /* DiskTestVideoSurfaceView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		1A00000500000000000000D4 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000050000000000000105 /* DiskTestEmulatorRunner.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		1A00000500000000000000D5 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				1A0000050000000000000106 /* ROMLocator.swift */,
+				1A0000050000000000000107 /* WindowTitleUpdater.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -630,6 +851,42 @@
 			productReference = 1A0000020000000000000108 /* VideoTest.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1A0000030000000000000030 /* ADBTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A0000030000000000000080 /* Build configuration list for PBXNativeTarget "ADBTest" */;
+			buildPhases = (
+				1A0000030000000000000040 /* Sources */,
+				1A0000030000000000000041 /* Frameworks */,
+				1A0000030000000000000042 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1A00000300000000000000C1 /* PBXTargetDependency */,
+			);
+			name = ADBTest;
+			productName = ADBTest;
+			productReference = 1A0000030000000000000108 /* ADBTest.app */;
+			productType = "com.apple.product-type.application";
+		};
+		1A0000050000000000000030 /* DiskTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A0000050000000000000080 /* Build configuration list for PBXNativeTarget "DiskTest" */;
+			buildPhases = (
+				1A0000050000000000000040 /* Sources */,
+				1A0000050000000000000041 /* Frameworks */,
+				1A0000050000000000000042 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1A00000500000000000000C1 /* PBXTargetDependency */,
+			);
+			name = DiskTest;
+			productName = DiskTest;
+			productReference = 1A0000050000000000000108 /* DiskTest.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -656,6 +913,12 @@
 					1A0000020000000000000030 = {
 						CreatedOnToolsVersion = 26.0;
 					};
+					1A0000030000000000000030 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					1A0000050000000000000030 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 				};
 			};
 			buildConfigurationList = 1A0000010000000000000082 /* Build configuration list for PBXProject "IIGSCore" */;
@@ -676,6 +939,8 @@
 				1A0000010000000000000032 /* IIGSDebuggerCLI */,
 				1A0000010000000000000033 /* IIGSDebugger */,
 				1A0000020000000000000030 /* VideoTest */,
+				1A0000030000000000000030 /* ADBTest */,
+				1A0000050000000000000030 /* DiskTest */,
 			);
 		};
 /* End PBXProject section */
@@ -705,6 +970,7 @@
 				1A000001000000000000001A /* IIGSSmartPortController.swift in Sources */,
 				1A000001000000000000001C /* IIGSFloppyMedia.swift in Sources */,
 				1A000001000000000000001D /* IIGSIWMController.swift in Sources */,
+				1A000001000000000000004D /* IIGSDiskImageLoader.swift in Sources */,
 				1A000001000000000000001F /* IIGSSoundController.swift in Sources */,
 				1A0000010000000000000023 /* IIGSDebugger.swift in Sources */,
 				1A0000010000000000000035 /* IIGSDebuggerSnapshot.swift in Sources */,
@@ -737,7 +1003,10 @@
 				1A000001000000000000003D /* DebuggerPhase19Tests.swift in Sources */,
 				1A000001000000000000004A /* DebuggerPhase20Tests.swift in Sources */,
 				1A000001000000000000004B /* ROMBootConvergencePhase21Tests.swift in Sources */,
+				1A000001000000000000004E /* DiskImageLoaderTests.swift in Sources */,
 				1A000002000000000000000A /* VideoTestBootBenchmarkTests.swift in Sources */,
+				1A0000040000000000000003 /* MacKeyboardInputMapper.swift in Sources */,
+				1A0000040000000000000004 /* MacKeyboardInputMapperTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -763,6 +1032,7 @@
 				1A000001000000000000003E /* DisassemblyPanel.swift in Sources */,
 				1A000001000000000000003F /* InspectorPanel.swift in Sources */,
 				1A0000010000000000000049 /* MachineDisplayPanel.swift in Sources */,
+				1A0000040000000000000001 /* MacKeyboardInputMapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -777,6 +1047,36 @@
 				1A0000020000000000000005 /* VideoTestEmulatorRunner.swift in Sources */,
 				1A0000020000000000000006 /* ROMLocator.swift in Sources */,
 				1A0000020000000000000007 /* WindowTitleUpdater.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000030000000000000040 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A0000030000000000000001 /* ADBTestApp.swift in Sources */,
+				1A0000030000000000000002 /* ADBTestContentView.swift in Sources */,
+				1A0000030000000000000003 /* ADBTestVideoSurfaceView.swift in Sources */,
+				1A0000030000000000000004 /* ADBTestEmulatorStore.swift in Sources */,
+				1A0000030000000000000005 /* ADBTestEmulatorRunner.swift in Sources */,
+				1A0000030000000000000006 /* ROMLocator.swift in Sources */,
+				1A0000030000000000000007 /* WindowTitleUpdater.swift in Sources */,
+				1A0000040000000000000002 /* MacKeyboardInputMapper.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000050000000000000040 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A0000050000000000000001 /* DiskTestApp.swift in Sources */,
+				1A0000050000000000000002 /* DiskTestContentView.swift in Sources */,
+				1A0000050000000000000003 /* DiskTestVideoSurfaceView.swift in Sources */,
+				1A0000050000000000000004 /* DiskTestEmulatorStore.swift in Sources */,
+				1A0000050000000000000005 /* DiskTestEmulatorRunner.swift in Sources */,
+				1A0000050000000000000006 /* ROMLocator.swift in Sources */,
+				1A0000050000000000000007 /* WindowTitleUpdater.swift in Sources */,
+				1A000005000000000000000A /* MacKeyboardInputMapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -807,6 +1107,16 @@
 			isa = PBXTargetDependency;
 			target = 1A0000010000000000000030 /* IIGSCore */;
 			targetProxy = 1A00000200000000000000C0 /* PBXContainerItemProxy */;
+		};
+		1A00000300000000000000C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1A0000010000000000000030 /* IIGSCore */;
+			targetProxy = 1A00000300000000000000C0 /* PBXContainerItemProxy */;
+		};
+		1A00000500000000000000C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1A0000010000000000000030 /* IIGSCore */;
+			targetProxy = 1A00000500000000000000C0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1159,6 +1469,104 @@
 			};
 			name = Release;
 		};
+		1A0000030000000000000060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ADBTest;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.local.ADBTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		1A0000030000000000000061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ADBTest;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.local.ADBTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		1A0000050000000000000060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = DiskTest;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.local.DiskTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		1A0000050000000000000061 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = DiskTest;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.local.DiskTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1212,6 +1620,24 @@
 			buildConfigurations = (
 				1A0000020000000000000060 /* Debug */,
 				1A0000020000000000000061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1A0000030000000000000080 /* Build configuration list for PBXNativeTarget "ADBTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A0000030000000000000060 /* Debug */,
+				1A0000030000000000000061 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1A0000050000000000000080 /* Build configuration list for PBXNativeTarget "DiskTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A0000050000000000000060 /* Debug */,
+				1A0000050000000000000061 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

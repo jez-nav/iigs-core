@@ -67,6 +67,10 @@ public final class CPU65816 {
             return 1
         }
 
+        if isWaiting && (abortPending || nmiPending || irqPending || irqLineAsserted) {
+            isWaiting = false
+        }
+
         if isWaiting {
             bus.idle(cycles: 1)
             return 1
@@ -99,7 +103,7 @@ public final class CPU65816 {
         case 0x05: return accumulatorReadModify(.ora, mode: .direct, using: bus, cycles: directPageBaseCycleCount(3))
         case 0x06: return memoryShiftRotate(.asl, mode: .direct, using: bus, cycles: directPageBaseCycleCount(5))
         case 0x07: return accumulatorReadModify(.ora, mode: .directIndirectLong, using: bus, cycles: directPageBaseCycleCount(6))
-        case 0x08: push8(registers.status.rawValue, using: bus); return 3
+        case 0x08: push8(statusByteForStack(breakFlag: true), using: bus); return 3
         case 0x09: accumulatorImmediate(.ora, using: bus); return registers.accumulatorIs8Bit ? 2 : 3
         case 0x0A: shiftRotateAccumulator(.asl); return 2
         case 0x0B: push16(registers.directPage, using: bus); return 4
@@ -310,7 +314,7 @@ public final class CPU65816 {
         case 0xC8: incrementIndex(\.y); return 2
         case 0xC9: compareImmediate(registers.accumulator, width: accumulatorWidth, using: bus); return registers.accumulatorIs8Bit ? 2 : 3
         case 0xCA: decrementIndex(\.x); return 2
-        case 0xCB: isWaiting = true; return 3
+        case 0xCB: isWaiting = !(abortPending || nmiPending || irqPending || irqLineAsserted); return 3
         case 0xCC: return compareIndex(registers.y, mode: .absolute, using: bus, cycles: registers.indexRegistersAre8Bit ? 4 : 5)
         case 0xCD: return compareAccumulator(mode: .absolute, using: bus, cycles: registers.accumulatorIs8Bit ? 4 : 5)
         case 0xCE: return memoryIncrementDecrement(mode: .absolute, increment: false, using: bus, cycles: 6)
@@ -537,8 +541,7 @@ private extension CPU65816 {
             let pointer = directAddress(fetch8(using: bus))
             return absoluteDataAddress(read16Bank0(at: pointer, using: bus))
         case .directIndexedIndirectX:
-            let offset = UInt8(truncatingIfNeeded: UInt16(fetch8(using: bus)) &+ registers.x)
-            let pointer = directAddress(offset)
+            let pointer = directIndexedAddress(fetch8(using: bus), index: registers.x)
             return absoluteDataAddress(read16Bank0(at: pointer, using: bus))
         case .directIndirectIndexedY:
             let pointer = directAddress(fetch8(using: bus))
@@ -1011,7 +1014,7 @@ private extension CPU65816 {
         _ = fetch8(using: bus)
         if registers.emulationMode {
             push16(registers.programCounter, using: bus)
-            push8(registers.status.rawValue | 0x10, using: bus)
+            push8(statusByteForStack(breakFlag: true), using: bus)
             finishInterrupt(vector: 0x00FFFE, using: bus)
             return 7
         } else {
@@ -1027,7 +1030,7 @@ private extension CPU65816 {
         _ = fetch8(using: bus)
         if registers.emulationMode {
             push16(registers.programCounter, using: bus)
-            push8(registers.status.rawValue, using: bus)
+            push8(statusByteForStack(breakFlag: true), using: bus)
             finishInterrupt(vector: 0x00FFF4, using: bus)
             return 7
         } else {
@@ -1052,7 +1055,7 @@ private extension CPU65816 {
 
         if registers.emulationMode {
             push16(registers.programCounter, using: bus)
-            push8(registers.status.rawValue, using: bus)
+            push8(statusByteForStack(breakFlag: false), using: bus)
         } else {
             push8(registers.programBank, using: bus)
             push16(registers.programCounter, using: bus)
@@ -1066,7 +1069,7 @@ private extension CPU65816 {
         registers.status.remove(.decimal)
         registers.status.insert(.interruptDisable)
         registers.programBank = 0
-        registers.programCounter = read16(at: vector, using: bus)
+        registers.programCounter = read16(at: bus.interruptVectorAddress(vector), using: bus)
     }
 
     func pea(using bus: IIGSBus) -> Int {
@@ -1194,6 +1197,20 @@ private extension CPU65816 {
         } else {
             registers.status.remove(flag)
         }
+    }
+
+    func statusByteForStack(breakFlag: Bool) -> UInt8 {
+        guard registers.emulationMode else {
+            return registers.status.rawValue
+        }
+
+        var value = registers.status.rawValue | ProcessorStatus.accumulator8Bit.rawValue
+        if breakFlag {
+            value |= ProcessorStatus.indexRegister8Bit.rawValue
+        } else {
+            value &= ~ProcessorStatus.indexRegister8Bit.rawValue
+        }
+        return value
     }
 
     func push8(_ value: UInt8, using bus: IIGSBus) {
