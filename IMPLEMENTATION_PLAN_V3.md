@@ -103,6 +103,11 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
   - Register read/write tests for DOC control, pointer, data, auto-increment, and interrupt registers.
   - Deterministic sample-generation tests for a small waveform and known oscillator settings.
   - Runtime smoke tests with software that is known to use IIgs DOC audio.
+- Current Core audio hardening pass:
+  - Keep `IIGSCore` limited to deterministic raw stereo `Int16` sample buffers, with no CoreAudio framework dependency.
+  - Render audio by emulated cycle range so `$C030` speaker toggles and DOC register changes are preserved before state mutation.
+  - Expose memory-bus audio draining for app/client playback layers such as DiskTest.
+  - Use the local ROM 01 startup beep as a fixture for speaker-toggle tone measurement; CoreAudio playback remains a DiskTest/client-layer follow-up.
 
 ## Video And Whole-Machine Regression Coverage
 

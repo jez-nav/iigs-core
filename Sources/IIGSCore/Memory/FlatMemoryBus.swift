@@ -75,6 +75,10 @@ public final class FlatMemoryBus: IIGSBus {
         advanceCycles(UInt64(cycles))
     }
 
+    public func drainAudio(sampleRate: Int = IIGSSoundController.defaultSampleRate) -> IIGSAudioBuffer {
+        soundController.drainAudio(toCycle: cycleCount, sampleRate: sampleRate)
+    }
+
     public var irqLineAsserted: Bool {
         interruptState.irqAsserted || adbController.irqAsserted || soundController.docIRQAsserted
     }
@@ -131,6 +135,10 @@ public final class FlatMemoryBus: IIGSBus {
         cycleCount += cycles
         softSwitches.advanceVideoFrame(toCycle: cycleCount)
         scheduler?.advance(to: cycleCount)
+    }
+
+    private func synchronizeAudio() {
+        soundController.queueAudio(toCycle: cycleCount)
     }
 
     public func peek8(at address: UInt32) -> UInt8 {
@@ -456,6 +464,7 @@ public final class FlatMemoryBus: IIGSBus {
             interruptState.clearC023Status(mask: IIGSInterruptState.c023ScanlinePendingMask)
             return IIGSVideoTiming.horizontalCounter(atCycle: cycleCount)
         case 0xC030:
+            synchronizeAudio()
             return soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC031:
             return iwmController.readDriveControlRegister()
@@ -468,6 +477,7 @@ public final class FlatMemoryBus: IIGSBus {
         case 0xC03C:
             return soundController.readSoundControl()
         case 0xC03D:
+            synchronizeAudio()
             return soundController.readDataPort()
         case 0xC03E:
             return soundController.readPointerLow()
@@ -560,14 +570,19 @@ public final class FlatMemoryBus: IIGSBus {
             realTimeClock.writeControl(value)
             softSwitches.setBorderColor(value, atCycle: cycleCount)
         case 0xC030:
+            synchronizeAudio()
             _ = soundController.toggleSpeaker(atCycle: cycleCount)
         case 0xC03C:
+            synchronizeAudio()
             soundController.writeSoundControl(value)
         case 0xC03D:
+            synchronizeAudio()
             soundController.writeDataPort(value)
         case 0xC03E:
+            synchronizeAudio()
             soundController.writePointerLow(value)
         case 0xC03F:
+            synchronizeAudio()
             soundController.writePointerHigh(value)
         case 0xC041:
             traceIO("W C041 \(hexByte(value))")
