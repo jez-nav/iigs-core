@@ -47,6 +47,8 @@ struct DiskTestContentView: View {
                 frame: store.videoFrame,
                 isFocused: store.displayHasKeyboardFocus,
                 onFocusChanged: store.setDisplayFocus(_:),
+                onMouse: store.handleMouse(displayX:displayY:buttonDown:syncToHostPosition:),
+                onMouseExit: store.handleMouseExit,
                 onKeyEvent: store.handleKeyEvent(_:)
             )
             .aspectRatio(displayAspectRatio(for: store.videoFrame), contentMode: .fit)

@@ -27,7 +27,10 @@ public final class IIGSADBController {
     private var responseHeader: UInt8?
     private var responseQueue: [UInt8] = []
     private var keyboardEvents: [UInt8] = []
-    private var mouseBytes: [UInt8] = []
+    private var reportedMouseX: Int16 = 0
+    private var reportedMouseY: Int16 = 0
+    private var reportedMouseButtonDown = false
+    private var mouseNextReadIsY = false
     private var adbRAM = Array(repeating: UInt8(0), count: 256)
     private var modeByte: UInt8 = 0
     private var configurationByte: UInt8 = 0
@@ -51,8 +54,8 @@ public final class IIGSADBController {
     }
 
     public var statusRegister: UInt8 {
-        var status = statusControl & 0x56
-        if !mouseBytes.isEmpty {
+        var status = statusControl & 0x54
+        if mouseDataAvailable {
             status |= 0x80
         }
         if responseHeader != nil || !responseQueue.isEmpty {
@@ -60,6 +63,9 @@ public final class IIGSADBController {
         }
         if !keyboardEvents.isEmpty {
             status |= 0x08
+        }
+        if mouseNextReadIsY {
+            status |= 0x02
         }
         if commandFull {
             status |= 0x01
@@ -86,7 +92,6 @@ public final class IIGSADBController {
         responseHeader = nil
         responseQueue.removeAll()
         keyboardEvents.removeAll()
-        mouseBytes.removeAll()
         pendingCommand = nil
         modifierRegister = 0
         keyboardLatch = 0
@@ -95,6 +100,10 @@ public final class IIGSADBController {
         mouseX = 0
         mouseY = 0
         mouseButtonDown = false
+        reportedMouseX = 0
+        reportedMouseY = 0
+        reportedMouseButtonDown = false
+        mouseNextReadIsY = false
         modeByte = 0
         configurationByte = 0
         configurationBytes = Array(repeating: UInt8(0), count: 3)
@@ -132,9 +141,6 @@ public final class IIGSADBController {
         mouseButtonDown = buttonDown
         mouseX = mouseX &+ Int16(dx)
         mouseY = mouseY &+ Int16(dy)
-        mouseBytes.append(buttonDown ? 0x00 : 0x80)
-        mouseBytes.append(UInt8(bitPattern: dx))
-        mouseBytes.append(UInt8(bitPattern: dy))
     }
 
     func readKeyboardData() -> UInt8 {
@@ -149,10 +155,19 @@ public final class IIGSADBController {
     }
 
     func readMouseData() -> UInt8 {
-        guard !mouseBytes.isEmpty else {
-            return 0x80
+        let value: UInt8
+        if mouseNextReadIsY {
+            let delta = clampedMouseDelta(from: reportedMouseY, to: mouseY)
+            reportedMouseY = reportedMouseY &+ Int16(delta)
+            reportedMouseButtonDown = mouseButtonDown
+            value = encodedMouseByte(delta: delta, buttonDown: mouseButtonDown)
+        } else {
+            let delta = clampedMouseDelta(from: reportedMouseX, to: mouseX)
+            reportedMouseX = reportedMouseX &+ Int16(delta)
+            value = 0x80 | encodedMouseDelta(delta)
         }
-        return mouseBytes.removeFirst()
+        mouseNextReadIsY.toggle()
+        return value
     }
 
     func readCommandData() -> UInt8 {
@@ -230,7 +245,7 @@ public final class IIGSADBController {
     }
 
     func writeStatusControl(_ value: UInt8) {
-        statusControl = value & 0x56
+        statusControl = value & 0x54
         traceEvent("W C027 \(hex(value)) -> \(hex(statusControl))")
     }
 
@@ -366,8 +381,7 @@ public final class IIGSADBController {
     private func talkMouse(register: UInt8) {
         switch register {
         case 0:
-            responseQueue.append(contentsOf: mouseBytes)
-            mouseBytes.removeAll()
+            responseQueue.append(contentsOf: readMouseRegisterZeroPacket())
         case 3:
             responseQueue.append(0x00)
             responseQueue.append(mouseAddress)
@@ -383,9 +397,7 @@ public final class IIGSADBController {
             return [first, second]
         }
         if deviceAddress == mouseAddress {
-            let bytes = Array(mouseBytes.prefix(2))
-            mouseBytes.removeFirst(min(2, mouseBytes.count))
-            return bytes + Array(repeating: UInt8(0), count: max(0, 2 - bytes.count))
+            return readMouseRegisterZeroPacket()
         }
         return []
     }
@@ -487,6 +499,37 @@ public final class IIGSADBController {
 
     private var configuredKeyboardLayout: UInt8 {
         keyboardSetupByte & 0x0F
+    }
+
+    private var mouseDataAvailable: Bool {
+        mouseX != reportedMouseX
+            || mouseY != reportedMouseY
+            || mouseButtonDown != reportedMouseButtonDown
+    }
+
+    private func readMouseRegisterZeroPacket() -> [UInt8] {
+        let dx = clampedMouseDelta(from: reportedMouseX, to: mouseX)
+        let dy = clampedMouseDelta(from: reportedMouseY, to: mouseY)
+        reportedMouseX = reportedMouseX &+ Int16(dx)
+        reportedMouseY = reportedMouseY &+ Int16(dy)
+        reportedMouseButtonDown = mouseButtonDown
+        return [
+            encodedMouseByte(delta: dy, buttonDown: mouseButtonDown),
+            0x80 | encodedMouseDelta(dx)
+        ]
+    }
+
+    private func clampedMouseDelta(from reportedValue: Int16, to targetValue: Int16) -> Int8 {
+        let delta = Int(targetValue) - Int(reportedValue)
+        return Int8(max(-0x3F, min(0x3F, delta)))
+    }
+
+    private func encodedMouseByte(delta: Int8, buttonDown: Bool) -> UInt8 {
+        (buttonDown ? 0x00 : 0x80) | encodedMouseDelta(delta)
+    }
+
+    private func encodedMouseDelta(_ delta: Int8) -> UInt8 {
+        UInt8(bitPattern: delta) & 0x7F
     }
 
     private func queueResult(_ bytes: [UInt8]) {

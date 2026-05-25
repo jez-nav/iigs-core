@@ -30,6 +30,45 @@ struct IIGSHostKeyEvent: Equatable, Sendable {
     }
 }
 
+struct IIGSHostMouseEvent: Equatable, Sendable {
+    let dx: Int8
+    let dy: Int8
+    let buttonDown: Bool
+
+    func apply(to machine: IIGSMachine) {
+        machine.moveMouse(dx: dx, dy: dy, buttonDown: buttonDown)
+    }
+
+    static func events(
+        deltaX: Int,
+        deltaY: Int,
+        buttonDown: Bool,
+        includeStationaryEvent: Bool = false
+    ) -> [IIGSHostMouseEvent] {
+        var remainingX = deltaX
+        var remainingY = deltaY
+        var events: [IIGSHostMouseEvent] = []
+
+        while remainingX != 0 || remainingY != 0 {
+            let dx = nextDeltaChunk(from: remainingX)
+            let dy = nextDeltaChunk(from: remainingY)
+            events.append(IIGSHostMouseEvent(dx: dx, dy: dy, buttonDown: buttonDown))
+            remainingX -= Int(dx)
+            remainingY -= Int(dy)
+        }
+
+        if events.isEmpty, includeStationaryEvent {
+            events.append(IIGSHostMouseEvent(dx: 0, dy: 0, buttonDown: buttonDown))
+        }
+
+        return events
+    }
+
+    private static func nextDeltaChunk(from value: Int) -> Int8 {
+        Int8(max(-127, min(127, value)))
+    }
+}
+
 enum MacKeyboardInputMapper {
     static func resetKeyPress(modifiers: IIGSADBModifiers = []) -> [IIGSHostKeyEvent] {
         modifierEvents(for: modifiers, isKeyUp: false)

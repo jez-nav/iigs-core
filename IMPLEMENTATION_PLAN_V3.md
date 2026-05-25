@@ -17,10 +17,31 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
 - Add file-backed write-through or explicit dirty-image export before allowing default writable host images.
 - Deepen 3.5 IWM timing/handshake fidelity if more finicky media exposes gaps.
 - Expand BRAM/RTC modeling with ROM 03-specific defaults and user-facing controls for startup slot/scan policy.
-- Add mouse support so GS/OS desktop applications and mouse-driven demos can be exercised inside DiskTest.
+- Add mouse support so GS/OS desktop applications and mouse-driven demos can be exercised inside DiskTest. This is the next active V3 workstream.
 - Add an in-session Classic Desk Accessory trigger using Apple-Control-Escape, separate from the current Option-Reset startup Control Panel path.
 - Add partition/container selection for images with multiple mountable partitions.
 - Add debugger/CLI disk mounting commands that share the same loader as `DiskTest`.
+
+## Active V3 Sequencing
+
+1. DiskTest mouse support:
+   - Current status: implemented in DiskTest pending final manual UX confirmation.
+   - Reuse the existing macOS debugger display pattern for AppKit mouse tracking.
+   - Keep SwiftUI as the owner of app state and use `NSViewRepresentable` only for display focus, keyboard, and mouse event capture.
+   - Queue host mouse movement/button events through `DiskTestEmulatorRunner`, so the emulation loop remains the only owner of `IIGSMachine` mutation.
+   - Split or clamp large host deltas before forwarding them to the existing ADB mouse path.
+   - Hide the host cursor only over the active render area, keep the blue border as normal host UI, and stop guest motion outside the active area.
+   - Sync the guest pointer to the host pointer on active-area entry before resuming normal relative deltas.
+   - Verify GS/OS Finder pointer movement, click, and double-click behavior after booting `System.Disk.po`.
+2. Core audio hardening:
+   - Keep deterministic speaker/DOC state and sample rendering inside `IIGSCore.framework`.
+   - Keep CoreAudio and any host playback engine out of `IIGSCore.framework`.
+   - Refactor audio rendering around emulated cycle ranges so `$C030` toggles, DOC register changes, oscillator events, and IRQ state are reproducible in tests.
+   - Harden DOC oscillator timing, wave size/resolution, one-shot/free-run/sync/swap behavior, `$E0/$E1` IRQ semantics, and mixed speaker/DOC sample output.
+3. DiskTest audio playback:
+   - Add macOS-only CoreAudio/AVAudio plumbing in the DiskTest app/client layer.
+   - Feed host audio from framework-owned deterministic sample buffers.
+   - Add DiskTest mute/volume controls while preserving headless and XCTest paths.
 
 ## Disk And Storage Hardening
 
@@ -45,6 +66,7 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
 ## Desktop Interaction And Input
 
 - Add ADB mouse support to DiskTest:
+  - Current implementation captures active-render-area motion, hides the host cursor over that active area only, releases/clears mouse state on exit or focus loss, and syncs the guest pointer to the host entry position.
   - Capture host mouse movement, button state, and window focus from the AppKit video surface.
   - Convert host movement into IIgs ADB mouse deltas.
   - Queue mouse events through the emulator runner so `IIGSMachine` mutation stays on the emulation loop.

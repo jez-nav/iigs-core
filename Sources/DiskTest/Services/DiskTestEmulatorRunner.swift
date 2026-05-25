@@ -26,6 +26,14 @@ private final class DiskTestInputQueue: @unchecked Sendable {
         enqueue(.keyEvent(event))
     }
 
+    func enqueue(_ event: IIGSHostMouseEvent) {
+        enqueue(.mouseEvent(event))
+    }
+
+    func syncMouse(displayX: Int, displayY: Int, buttonDown: Bool) {
+        enqueue(.mouseSync(displayX: displayX, displayY: displayY, buttonDown: buttonDown))
+    }
+
     func enqueue(_ command: DiskTestEmulatorCommand) {
         lock.lock()
         pending.append(command)
@@ -84,6 +92,8 @@ private final class DiskTestFrameDelivery: @unchecked Sendable {
 
 private enum DiskTestEmulatorCommand: Sendable {
     case keyEvent(IIGSHostKeyEvent)
+    case mouseEvent(IIGSHostMouseEvent)
+    case mouseSync(displayX: Int, displayY: Int, buttonDown: Bool)
     case powerCycle
     case reset(IIGSResetKind)
     case keyboardReset(modifiers: IIGSADBModifiers)
@@ -99,6 +109,14 @@ final class DiskTestEmulatorRunner {
 
     func enqueue(_ event: IIGSHostKeyEvent) {
         inputQueue.enqueue(event)
+    }
+
+    func enqueue(_ event: IIGSHostMouseEvent) {
+        inputQueue.enqueue(event)
+    }
+
+    func syncMouse(displayX: Int, displayY: Int, buttonDown: Bool) {
+        inputQueue.syncMouse(displayX: displayX, displayY: displayY, buttonDown: buttonDown)
     }
 
     func reset(_ kind: IIGSResetKind) {
@@ -173,6 +191,10 @@ final class DiskTestEmulatorRunner {
                                 updatePressedKeys(&pressedKeyCodes, for: event)
                                 event.apply(to: machine)
                             }
+                        case let .mouseEvent(event):
+                            event.apply(to: machine)
+                        case let .mouseSync(displayX, displayY, buttonDown):
+                            syncMachineMouse(displayX: displayX, displayY: displayY, buttonDown: buttonDown, in: machine)
                         case .powerCycle:
                             machine.powerCycle()
                             publishStatus(machine.mountedDiskImages, unlessCancelled: control, to: statusHandler)
@@ -246,6 +268,21 @@ final class DiskTestEmulatorRunner {
     func stop() {
         control?.cancel()
         control = nil
+    }
+}
+
+private func syncMachineMouse(displayX: Int, displayY: Int, buttonDown: Bool, in machine: IIGSMachine) {
+    let deltaX = displayX - Int(machine.memory.adbController.mouseX)
+    let deltaY = displayY - Int(machine.memory.adbController.mouseY)
+    let events = IIGSHostMouseEvent.events(
+        deltaX: deltaX,
+        deltaY: deltaY,
+        buttonDown: buttonDown,
+        includeStationaryEvent: true
+    )
+
+    for event in events {
+        event.apply(to: machine)
     }
 }
 

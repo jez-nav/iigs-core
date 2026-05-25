@@ -183,6 +183,39 @@ final class MacKeyboardInputMapperTests: XCTestCase {
         XCTAssertEqual(downEvents.last?.keyCode, 0x24)
     }
 
+    func testMouseEventSplitsLargeDisplayDeltasIntoSafeADBChunks() {
+        let events = IIGSHostMouseEvent.events(deltaX: 300, deltaY: -260, buttonDown: true)
+
+        XCTAssertEqual(events, [
+            IIGSHostMouseEvent(dx: 127, dy: -127, buttonDown: true),
+            IIGSHostMouseEvent(dx: 127, dy: -127, buttonDown: true),
+            IIGSHostMouseEvent(dx: 46, dy: -6, buttonDown: true)
+        ])
+    }
+
+    func testMouseEventCanRepresentButtonOnlyTransition() {
+        let events = IIGSHostMouseEvent.events(
+            deltaX: 0,
+            deltaY: 0,
+            buttonDown: true,
+            includeStationaryEvent: true
+        )
+
+        XCTAssertEqual(events, [IIGSHostMouseEvent(dx: 0, dy: 0, buttonDown: true)])
+    }
+
+    func testMouseEventAppliesToMachineADBMousePath() {
+        let machine = IIGSMachine()
+
+        IIGSHostMouseEvent(dx: 4, dy: -2, buttonDown: true).apply(to: machine)
+
+        XCTAssertEqual(machine.memory[0x00C024], 0x84)
+        XCTAssertEqual(machine.memory[0x00C024], 0x7E)
+        XCTAssertEqual(machine.memory.adbController.mouseX, 4)
+        XCTAssertEqual(machine.memory.adbController.mouseY, -2)
+        XCTAssertTrue(machine.memory.adbController.mouseButtonDown)
+    }
+
     private func makeFlagsEvent(keyCode: UInt16, flags: NSEvent.ModifierFlags) throws -> NSEvent {
         try XCTUnwrap(NSEvent.keyEvent(
             with: .flagsChanged,

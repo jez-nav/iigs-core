@@ -199,10 +199,12 @@ final class InputPhase7Tests: XCTestCase {
         memory.adbController.moveMouse(dx: 5, dy: -3, buttonDown: true)
 
         XCTAssertEqual(memory[0x00C027] & 0x80, 0x80)
-        XCTAssertEqual(memory[0x00C024], 0x00)
-        XCTAssertEqual(memory[0x00C024], 0x05)
-        XCTAssertEqual(memory[0x00C024], 0xFD)
+        XCTAssertEqual(memory[0x00C027] & 0x02, 0x00)
+        XCTAssertEqual(memory[0x00C024], 0x85)
+        XCTAssertEqual(memory[0x00C027] & 0x82, 0x82)
+        XCTAssertEqual(memory[0x00C024], 0x7D)
         XCTAssertEqual(memory[0x00C027] & 0x80, 0x00)
+        XCTAssertEqual(memory[0x00C027] & 0x02, 0x00)
         XCTAssertEqual(memory.adbController.mouseX, 5)
         XCTAssertEqual(memory.adbController.mouseY, -3)
         XCTAssertTrue(memory.adbController.mouseButtonDown)
@@ -218,7 +220,6 @@ final class InputPhase7Tests: XCTestCase {
 
         _ = memory[0x00C024]
         _ = memory[0x00C024]
-        _ = memory[0x00C024]
 
         XCTAssertFalse(memory.adbController.irqAsserted)
     }
@@ -227,14 +228,40 @@ final class InputPhase7Tests: XCTestCase {
         let memory = FlatMemoryBus()
 
         XCTAssertEqual(memory[0x00C024], 0x80)
+        XCTAssertEqual(memory[0x00C024], 0x80)
 
         memory.adbController.moveMouse(dx: 0, dy: 0, buttonDown: false)
         XCTAssertEqual(memory[0x00C024], 0x80)
-        _ = memory[0x00C024]
-        _ = memory[0x00C024]
+        XCTAssertEqual(memory[0x00C024], 0x80)
 
         memory.adbController.moveMouse(dx: 0, dy: 0, buttonDown: true)
+        XCTAssertEqual(memory[0x00C024], 0x80)
         XCTAssertEqual(memory[0x00C024], 0x00)
+    }
+
+    func testMouseRegisterPathClampsLargeDeltasUntilConsumed() {
+        let memory = FlatMemoryBus()
+
+        memory.adbController.moveMouse(dx: 100, dy: -100, buttonDown: false)
+
+        XCTAssertEqual(memory[0x00C024], 0xBF)
+        XCTAssertEqual(memory[0x00C024], 0xC1)
+        XCTAssertEqual(memory[0x00C027] & 0x80, 0x80)
+        XCTAssertEqual(memory[0x00C024], 0xA5)
+        XCTAssertEqual(memory[0x00C024], 0xDB)
+        XCTAssertEqual(memory[0x00C027] & 0x80, 0x00)
+    }
+
+    func testMouseTalkRegisterZeroReturnsTwoByteDeltaPacket() {
+        let memory = FlatMemoryBus()
+
+        memory.adbController.moveMouse(dx: 4, dy: -2, buttonDown: true)
+        memory[0x00C026] = 0xC3
+
+        XCTAssertEqual(memory[0x00C026], 0x81)
+        XCTAssertEqual(memory[0x00C026], 0x7E)
+        XCTAssertEqual(memory[0x00C026], 0x84)
+        XCTAssertEqual(memory[0x00C027] & 0x80, 0x00)
     }
 
     func testListenRegisterThreeChangesKeyboardAddress() {

@@ -19,6 +19,9 @@ final class DiskTestEmulatorStore: ObservableObject {
     private var statsDate = Date()
     private var statsCycleCount: UInt64 = 0
     private var uiFrameTicks = 0
+    private var lastDisplayMouseX: Int?
+    private var lastDisplayMouseY: Int?
+    private var lastMouseButtonDown = false
 
     var windowTitle: String {
         "DiskTest - EM \(emulatorFPS) - UI \(uiFPS)"
@@ -67,6 +70,8 @@ final class DiskTestEmulatorStore: ObservableObject {
     func setDisplayFocus(_ focused: Bool) {
         if !focused {
             runner.releaseKeyboard()
+            releaseMouseButtonIfNeeded()
+            clearDisplayMouse()
         }
         displayHasKeyboardFocus = focused
     }
@@ -81,6 +86,40 @@ final class DiskTestEmulatorStore: ObservableObject {
 
     func handleKeyEvent(_ event: IIGSHostKeyEvent) {
         runner.enqueue(event)
+    }
+
+    func handleMouse(displayX: Int, displayY: Int, buttonDown: Bool, syncToHostPosition: Bool) {
+        if syncToHostPosition {
+            runner.syncMouse(displayX: displayX, displayY: displayY, buttonDown: buttonDown)
+        } else {
+            let deltaX = lastDisplayMouseX.map { displayX - $0 } ?? 0
+            let deltaY = lastDisplayMouseY.map { displayY - $0 } ?? 0
+            let buttonChanged = buttonDown != lastMouseButtonDown
+            let events = IIGSHostMouseEvent.events(
+                deltaX: deltaX,
+                deltaY: deltaY,
+                buttonDown: buttonDown,
+                includeStationaryEvent: buttonChanged
+            )
+
+            for event in events {
+                runner.enqueue(event)
+            }
+        }
+
+        lastDisplayMouseX = displayX
+        lastDisplayMouseY = displayY
+        lastMouseButtonDown = buttonDown
+    }
+
+    func clearDisplayMouse() {
+        lastDisplayMouseX = nil
+        lastDisplayMouseY = nil
+    }
+
+    func handleMouseExit() {
+        releaseMouseButtonIfNeeded()
+        clearDisplayMouse()
     }
 
     func sendColdReset() {
@@ -184,6 +223,9 @@ final class DiskTestEmulatorStore: ObservableObject {
         statsDate = now
         statsCycleCount = 0
         uiFrameTicks = 0
+        lastDisplayMouseX = nil
+        lastDisplayMouseY = nil
+        lastMouseButtonDown = false
         emulatorFPS = "0.00 fps"
         uiFPS = "0.00 fps"
         errorMessage = nil
@@ -242,6 +284,15 @@ final class DiskTestEmulatorStore: ObservableObject {
         for event in events {
             handleKeyEvent(event)
         }
+    }
+
+    private func releaseMouseButtonIfNeeded() {
+        guard lastMouseButtonDown else {
+            return
+        }
+
+        runner.enqueue(IIGSHostMouseEvent(dx: 0, dy: 0, buttonDown: false))
+        lastMouseButtonDown = false
     }
 
     private static let basicSmokeTest = """
