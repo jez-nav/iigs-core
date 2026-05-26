@@ -39,6 +39,7 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
    - Refactor audio rendering around emulated cycle ranges so `$C030` toggles, DOC register changes, oscillator events, and IRQ state are reproducible in tests.
    - Harden DOC oscillator timing, wave size/resolution, one-shot/free-run/sync/swap behavior, `$E0/$E1` IRQ semantics, and mixed speaker/DOC sample output.
 3. DiskTest audio playback:
+   - Current status: implemented in DiskTest pending manual audio-quality confirmation.
    - Add macOS-only CoreAudio/AVAudio plumbing in the DiskTest app/client layer.
    - Feed host audio from framework-owned deterministic sample buffers.
    - Add DiskTest mute/volume controls while preserving headless and XCTest paths.
@@ -108,6 +109,12 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
   - Render audio by emulated cycle range so `$C030` speaker toggles and DOC register changes are preserved before state mutation.
   - Expose memory-bus audio draining for app/client playback layers such as DiskTest.
   - Use the local ROM 01 startup beep as a fixture for speaker-toggle tone measurement; CoreAudio playback remains a DiskTest/client-layer follow-up.
+- Current DiskTest audio playback pass:
+  - Keep AVAudioEngine playback in the DiskTest app target, outside `IIGSCore.framework`.
+  - Feed the host audio queue from `IIGSAudioBuffer` values drained once per emulated video frame.
+  - Clear queued host samples on reset/power-cycle so old audio does not survive machine resets.
+  - Add DiskTest mute and volume controls to the side panel.
+  - Ensure default battery RAM starts with audible user volume so ROM 01 boot beep toggles produce nonzero raw samples.
 
 ## Video And Whole-Machine Regression Coverage
 

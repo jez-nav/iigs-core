@@ -259,6 +259,7 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         XCTAssertEqual(bytes[0x26], 0x00)
         XCTAssertEqual(bytes[0x27], 0x01)
         XCTAssertEqual(bytes[0x28], 0x00)
+        XCTAssertEqual(bytes[0x1E], 0x0F)
         XCTAssertTrue(memory.batteryRAMChecksumIsValid)
         XCTAssertTrue(batteryRAMChecksumIsValid(bytes))
     }
@@ -278,6 +279,7 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         memory.loadBatteryRAM(Array(repeating: 0, count: 256))
 
         XCTAssertEqual(memory.batteryRAMSnapshot[0x28], 0x00)
+        XCTAssertEqual(memory.batteryRAMSnapshot[0x1E], 0x0F)
         XCTAssertTrue(memory.batteryRAMChecksumIsValid)
     }
 

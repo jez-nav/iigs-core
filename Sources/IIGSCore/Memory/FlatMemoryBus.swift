@@ -794,6 +794,7 @@ private struct IIGSRealTimeClock {
         bytes[0x1A] = 0x0F
         bytes[0x1B] = 0x06
         bytes[0x1C] = 0x06
+        bytes[0x1E] = 0x0F // User volume.
         bytes[0x20] = 0x01
         bytes[0x25] = 0x00 // Slot 5 internal SmartPort / 3.5 drive firmware.
         bytes[0x26] = 0x00 // Slot 6 internal 5.25 drive firmware.

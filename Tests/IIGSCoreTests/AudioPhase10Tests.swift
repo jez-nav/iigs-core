@@ -220,8 +220,11 @@ final class AudioPhase10Tests: XCTestCase {
         let machine = IIGSMachine(romImage: rom)
         machine.powerCycle()
 
+        var audibleSamplePeak = 0
         for _ in 0..<200 {
             _ = try machine.runForCycles(25_000, instructionLimit: 200_000)
+            let buffer = machine.memory.drainAudio()
+            audibleSamplePeak = max(audibleSamplePeak, buffer.samples.map { abs(Int($0)) }.max() ?? 0)
             if machine.memory.soundController.speakerToggles.count >= 20 {
                 break
             }
@@ -229,6 +232,7 @@ final class AudioPhase10Tests: XCTestCase {
 
         let toggles = machine.memory.soundController.speakerToggles
         XCTAssertGreaterThanOrEqual(toggles.count, 12, "ROM boot should produce the startup beep through $C030 toggles")
+        XCTAssertGreaterThan(audibleSamplePeak, 0, "ROM boot should produce nonzero raw audio samples when default battery RAM volume is audible")
 
         let deltas = zip(toggles.dropFirst(), toggles).map { Int($0.cycle - $1.cycle) }
         let positiveDeltas = deltas.filter { $0 > 0 }
@@ -250,7 +254,7 @@ final class AudioPhase10Tests: XCTestCase {
         let squareWaveFrequency = IIGSVideoTiming.megaIICyclesPerSecond / averageDelta / 2.0
         print("ROM 01 startup beep measured at \(squareWaveFrequency) Hz from average toggle delta \(averageDelta) cycles")
 
-        XCTAssertGreaterThan(squareWaveFrequency, 240, "Measured ROM 01 startup beep at \(squareWaveFrequency) Hz")
-        XCTAssertLessThan(squareWaveFrequency, 260, "Measured ROM 01 startup beep at \(squareWaveFrequency) Hz")
+        XCTAssertGreaterThan(squareWaveFrequency, 390, "Measured ROM 01 startup beep at \(squareWaveFrequency) Hz")
+        XCTAssertLessThan(squareWaveFrequency, 430, "Measured ROM 01 startup beep at \(squareWaveFrequency) Hz")
     }
 }

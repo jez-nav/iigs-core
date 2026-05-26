@@ -12,10 +12,15 @@ final class DiskTestEmulatorStore: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var inputStatus = "Ready"
     @Published private(set) var diskStatus = "No disk mounted"
+    @Published private(set) var audioStatus = "Audio starting"
+    @Published private(set) var audioMuted = false
+    @Published private(set) var audioVolume = 1.0
     @Published private(set) var mountedDisks: [IIGSDiskMountTarget: IIGSMountedDiskInfo] = [:]
 
     private let runner = DiskTestEmulatorRunner()
+    private let audioPlayer = DiskTestAudioPlayer()
     private var started = false
+    private var audioAvailable = false
     private var statsDate = Date()
     private var statsCycleCount: UInt64 = 0
     private var uiFrameTicks = 0
@@ -40,12 +45,19 @@ final class DiskTestEmulatorStore: ObservableObject {
 
         do {
             let romBytes = try Array(Data(contentsOf: romURL))
+            startAudio()
             resetStats()
             runner.start(
                 romBytes: romBytes,
                 batteryRAM: Self.loadBatteryRAM(),
                 frameHandler: { [weak self] frame, cycleCount in
                     self?.publish(frame: frame, cycleCount: cycleCount)
+                },
+                audioHandler: { [audioPlayer] buffer in
+                    audioPlayer.enqueue(buffer)
+                },
+                audioResetHandler: { [audioPlayer] in
+                    audioPlayer.clear()
                 },
                 statusHandler: { [weak self] mountedDisks in
                     self?.publish(mountedDisks: mountedDisks)
@@ -65,6 +77,8 @@ final class DiskTestEmulatorStore: ObservableObject {
 
     func stop() {
         runner.stop()
+        audioPlayer.stop()
+        audioAvailable = false
     }
 
     func setDisplayFocus(_ focused: Bool) {
@@ -174,6 +188,18 @@ final class DiskTestEmulatorStore: ObservableObject {
         diskStatus = "Ejecting \(target.displayName)"
     }
 
+    func setAudioEnabled(_ enabled: Bool) {
+        audioMuted = !enabled
+        audioPlayer.setMuted(audioMuted)
+        updateAudioStatus()
+    }
+
+    func setAudioVolume(_ volume: Double) {
+        audioVolume = min(max(volume, 0), 1)
+        audioPlayer.setVolume(audioVolume)
+        updateAudioStatus()
+    }
+
     func handleDrop(_ providers: [NSItemProvider], target: IIGSDiskMountTarget) -> Bool {
         for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { [weak self] item, _ in
@@ -231,6 +257,7 @@ final class DiskTestEmulatorStore: ObservableObject {
         errorMessage = nil
         inputStatus = "Ready"
         diskStatus = "No disk mounted"
+        updateAudioStatus()
         mountedDisks = [:]
     }
 
@@ -286,6 +313,30 @@ final class DiskTestEmulatorStore: ObservableObject {
         }
     }
 
+    private func startAudio() {
+        do {
+            try audioPlayer.start()
+            audioAvailable = true
+            audioPlayer.setMuted(audioMuted)
+            audioPlayer.setVolume(audioVolume)
+        } catch {
+            audioAvailable = false
+            audioStatus = "Audio unavailable: \(error.localizedDescription)"
+        }
+    }
+
+    private func updateAudioStatus() {
+        guard audioAvailable else {
+            return
+        }
+
+        if audioMuted {
+            audioStatus = "Muted"
+        } else {
+            audioStatus = "Volume \(Int((audioVolume * 100).rounded()))%"
+        }
+    }
+
     private func releaseMouseButtonIfNeeded() {
         guard lastMouseButtonDown else {
             return
@@ -320,7 +371,8 @@ final class DiskTestEmulatorStore: ObservableObject {
         else {
             return nil
         }
-        return Array(data)
+        let bytes = Array(data)
+        return isLegacyMutedDefaultBatteryRAM(bytes) ? nil : bytes
     }
 
     private static func persistBatteryRAM(_ bytes: [UInt8]) {
@@ -339,5 +391,21 @@ final class DiskTestEmulatorStore: ObservableObject {
         } catch {
             // Battery RAM persistence should never stop the emulator loop.
         }
+    }
+
+    private static func isLegacyMutedDefaultBatteryRAM(_ bytes: [UInt8]) -> Bool {
+        guard bytes.count == 256 else {
+            return false
+        }
+
+        return bytes[0x1A] == 0x0F
+            && bytes[0x1B] == 0x06
+            && bytes[0x1C] == 0x06
+            && bytes[0x1E] == 0x00
+            && bytes[0x20] == 0x01
+            && bytes[0x25] == 0x00
+            && bytes[0x26] == 0x00
+            && bytes[0x27] == 0x01
+            && bytes[0x28] == 0x00
     }
 }

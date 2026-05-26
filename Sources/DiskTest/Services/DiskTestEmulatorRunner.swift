@@ -147,6 +147,8 @@ final class DiskTestEmulatorRunner {
         romBytes: [UInt8],
         batteryRAM: [UInt8]?,
         frameHandler: @escaping @MainActor @Sendable (IIGSVideoFrame, UInt64) -> Void,
+        audioHandler: @escaping @Sendable (IIGSAudioBuffer) -> Void,
+        audioResetHandler: @escaping @Sendable () -> Void,
         statusHandler: @escaping @MainActor @Sendable ([IIGSDiskMountTarget: IIGSMountedDiskInfo]) -> Void,
         batteryRAMHandler: @escaping @MainActor @Sendable ([UInt8]) -> Void,
         errorHandler: @escaping @MainActor @Sendable (String) -> Void
@@ -185,6 +187,7 @@ final class DiskTestEmulatorRunner {
                             if event.isControlResetKeyDown {
                                 machine.reset(.warm)
                                 machine.memory.adbController.setModifiers(event.modifiers)
+                                audioResetHandler()
                                 pressedKeyCodes.removeAll()
                                 nextFrameDeadline = Date().addingTimeInterval(frameInterval)
                             } else {
@@ -197,16 +200,19 @@ final class DiskTestEmulatorRunner {
                             syncMachineMouse(displayX: displayX, displayY: displayY, buttonDown: buttonDown, in: machine)
                         case .powerCycle:
                             machine.powerCycle()
+                            audioResetHandler()
                             publishStatus(machine.mountedDiskImages, unlessCancelled: control, to: statusHandler)
                             pressedKeyCodes.removeAll()
                             nextFrameDeadline = Date().addingTimeInterval(frameInterval)
                         case let .reset(kind):
                             machine.reset(kind)
+                            audioResetHandler()
                             pressedKeyCodes.removeAll()
                             nextFrameDeadline = Date().addingTimeInterval(frameInterval)
                         case let .keyboardReset(modifiers):
                             machine.reset(.warm)
                             machine.memory.adbController.setModifiers(modifiers)
+                            audioResetHandler()
                             pressedKeyCodes.removeAll()
                             nextFrameDeadline = Date().addingTimeInterval(frameInterval)
                         case .releaseKeyboard:
@@ -226,6 +232,10 @@ final class DiskTestEmulatorRunner {
 
                     let result = try machine.runForCycles(cycleBudget, instructionLimit: instructionLimit)
                     let frame = IIGSVideoRenderer.renderFrame(from: machine.memory)
+                    let audioBuffer = machine.memory.drainAudio()
+                    if !audioBuffer.samples.isEmpty {
+                        audioHandler(audioBuffer)
+                    }
                     let cycleCount = machine.memory.cycleCount
                     #if DEBUG
                     diagnosticFrameIndex += 1

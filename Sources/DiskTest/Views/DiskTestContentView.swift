@@ -94,6 +94,10 @@ struct DiskTestContentView: View {
 
             Divider()
 
+            audioPanel
+
+            Divider()
+
             Text(store.diskStatus)
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
@@ -102,6 +106,48 @@ struct DiskTestContentView: View {
                 .padding(14)
         }
         .background(.regularMaterial)
+    }
+
+    private var audioPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Label("Audio", systemImage: store.audioMuted ? "speaker.slash" : "speaker.wave.2")
+                    .font(.system(.subheadline, weight: .semibold))
+
+                Spacer()
+
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { !store.audioMuted },
+                        set: { store.setAudioEnabled($0) }
+                    )
+                )
+                .labelsHidden()
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "speaker.fill")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+
+                Slider(
+                    value: Binding(
+                        get: { store.audioVolume },
+                        set: { store.setAudioVolume($0) }
+                    ),
+                    in: 0...1
+                )
+                .disabled(store.audioMuted)
+            }
+
+            Text(store.audioStatus)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(14)
     }
 
     private func diskRow(_ option: DiskTestMountOption) -> some View {

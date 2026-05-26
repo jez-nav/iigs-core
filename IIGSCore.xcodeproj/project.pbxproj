@@ -102,6 +102,7 @@
 		1A0000050000000000000008 /* IIGSCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; };
 		1A0000050000000000000009 /* IIGSCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000010000000000000110 /* IIGSCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A000005000000000000000A /* MacKeyboardInputMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000101 /* MacKeyboardInputMapper.swift */; };
+		1A000005000000000000000B /* DiskTestAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000109 /* DiskTestAudioPlayer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -293,6 +294,7 @@
 		1A0000050000000000000106 /* ROMLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ROMLocator.swift; sourceTree = "<group>"; };
 		1A0000050000000000000107 /* WindowTitleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTitleUpdater.swift; sourceTree = "<group>"; };
 		1A0000050000000000000108 /* DiskTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DiskTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A0000050000000000000109 /* DiskTestAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskTestAudioPlayer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -748,6 +750,7 @@
 			isa = PBXGroup;
 			children = (
 				1A0000050000000000000105 /* DiskTestEmulatorRunner.swift */,
+				1A0000050000000000000109 /* DiskTestAudioPlayer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1074,6 +1077,7 @@
 				1A0000050000000000000003 /* DiskTestVideoSurfaceView.swift in Sources */,
 				1A0000050000000000000004 /* DiskTestEmulatorStore.swift in Sources */,
 				1A0000050000000000000005 /* DiskTestEmulatorRunner.swift in Sources */,
+				1A000005000000000000000B /* DiskTestAudioPlayer.swift in Sources */,
 				1A0000050000000000000006 /* ROMLocator.swift in Sources */,
 				1A0000050000000000000007 /* WindowTitleUpdater.swift in Sources */,
 				1A000005000000000000000A /* MacKeyboardInputMapper.swift in Sources */,
