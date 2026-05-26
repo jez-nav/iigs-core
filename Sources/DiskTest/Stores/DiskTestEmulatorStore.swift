@@ -15,6 +15,9 @@ final class DiskTestEmulatorStore: ObservableObject {
     @Published private(set) var audioStatus = "Audio starting"
     @Published private(set) var audioMuted = false
     @Published private(set) var audioVolume = 1.0
+    @Published private(set) var batteryRAMProfile = IIGSBatteryRAMProfile.rom01
+    @Published private(set) var batteryRAMSettings = IIGSBatteryRAMSettings.rom01Default
+    @Published private(set) var batteryRAMChecksumIsValid = true
     @Published private(set) var mountedDisks: [IIGSDiskMountTarget: IIGSMountedDiskInfo] = [:]
 
     private let runner = DiskTestEmulatorRunner()
@@ -63,8 +66,9 @@ final class DiskTestEmulatorStore: ObservableObject {
                 statusHandler: { [weak self] mountedDisks in
                     self?.publish(mountedDisks: mountedDisks)
                 },
-                batteryRAMHandler: { bytes in
+                batteryRAMHandler: { [weak self] bytes, profile, settings, checksumIsValid in
                     Self.persistBatteryRAM(bytes)
+                    self?.publishBatteryRAM(profile: profile, settings: settings, checksumIsValid: checksumIsValid)
                 },
                 errorHandler: { [weak self] message in
                     self?.errorMessage = message
@@ -223,6 +227,12 @@ final class DiskTestEmulatorStore: ObservableObject {
         updateAudioStatus()
     }
 
+    func setBatteryRAMSettings(_ settings: IIGSBatteryRAMSettings) {
+        batteryRAMSettings = settings
+        runner.setBatteryRAMSettings(settings)
+        inputStatus = "Battery RAM settings queued"
+    }
+
     func handleDrop(_ providers: [NSItemProvider], target: IIGSDiskMountTarget) -> Bool {
         for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { [weak self] item, _ in
@@ -265,6 +275,16 @@ final class DiskTestEmulatorStore: ObservableObject {
                 .joined(separator: "  ")
             diskStatus = mountedList
         }
+    }
+
+    private func publishBatteryRAM(
+        profile: IIGSBatteryRAMProfile,
+        settings: IIGSBatteryRAMSettings,
+        checksumIsValid: Bool
+    ) {
+        batteryRAMProfile = profile
+        batteryRAMSettings = settings
+        batteryRAMChecksumIsValid = checksumIsValid
     }
 
     private func resetStats() {

@@ -83,11 +83,19 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
 
 ## BRAM, RTC, And ROM Compatibility
 
+- Current status: 50% complete. Core BRAM/RTC behavior, ROM-aware defaults, checksum-preserving settings helpers, and DiskTest controls are implemented and passing automated tests, but still need manual ROM/GS/OS/game validation.
 - Expand BRAM defaults and settings:
+  - Current core compatibility pass:
+    - Select an active BRAM profile from the installed ROM image and keep ROM 01/ROM 03 defaults separate.
+    - Preserve loaded/persisted BRAM over ROM profile changes, but fall back to checksum-valid profile defaults after invalid loads.
+    - Expose checksum-preserving settings helpers for startup slot, display colors, volume, slot defaults, and the ROM 03 Visit Monitor CDA bit.
   - Add ROM 03-specific defaults and compatibility tests.
   - Add user-facing controls for startup slot, scan policy, display defaults, and other safe Control Panel settings.
   - Preserve checksum integrity after user edits.
 - Harden RTC behavior:
+  - Current core compatibility pass:
+    - Use the KEGS-style `$C033/$C034` command state machine for time, internal-register, short-BRAM, and extended-BRAM transactions.
+    - Feed clock reads from host local time by default, with deterministic fixed Apple-epoch seconds available for tests.
   - Audit clock register reads/writes against ROM startup and Control Panel expectations.
   - Add tests for time/date fields, BRAM transactions, invalid checksum fallback, and persisted snapshots.
 

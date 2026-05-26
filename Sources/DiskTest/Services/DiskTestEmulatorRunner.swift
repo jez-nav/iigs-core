@@ -98,6 +98,7 @@ private enum DiskTestEmulatorCommand: Sendable {
     case reset(IIGSResetKind)
     case keyboardReset(modifiers: IIGSADBModifiers)
     case releaseKeyboard
+    case setBatteryRAMSettings(IIGSBatteryRAMSettings)
     case mountDisk(url: URL, target: IIGSDiskMountTarget)
     case ejectDisk(target: IIGSDiskMountTarget)
 }
@@ -135,6 +136,10 @@ final class DiskTestEmulatorRunner {
         inputQueue.enqueue(.releaseKeyboard)
     }
 
+    func setBatteryRAMSettings(_ settings: IIGSBatteryRAMSettings) {
+        inputQueue.enqueue(.setBatteryRAMSettings(settings))
+    }
+
     func mountDisk(url: URL, target: IIGSDiskMountTarget) {
         inputQueue.enqueue(.mountDisk(url: url, target: target))
     }
@@ -150,7 +155,7 @@ final class DiskTestEmulatorRunner {
         audioHandler: @escaping @Sendable (IIGSAudioBuffer) -> Void,
         audioResetHandler: @escaping @Sendable () -> Void,
         statusHandler: @escaping @MainActor @Sendable ([IIGSDiskMountTarget: IIGSMountedDiskInfo]) -> Void,
-        batteryRAMHandler: @escaping @MainActor @Sendable ([UInt8]) -> Void,
+        batteryRAMHandler: @escaping @MainActor @Sendable ([UInt8], IIGSBatteryRAMProfile, IIGSBatteryRAMSettings, Bool) -> Void,
         errorHandler: @escaping @MainActor @Sendable (String) -> Void
     ) {
         stop()
@@ -169,7 +174,7 @@ final class DiskTestEmulatorRunner {
                 }
                 machine.reset(.cold)
                 publishStatus(machine.mountedDiskImages, unlessCancelled: control, to: statusHandler)
-                publishBatteryRAM(machine.memory.batteryRAMSnapshot, unlessCancelled: control, to: batteryRAMHandler)
+                publishBatteryRAM(from: machine, unlessCancelled: control, to: batteryRAMHandler)
 
                 let cycleBudget = IIGSVideoTiming.cyclesPerFrame
                 let instructionLimit = 2_000_000
@@ -217,6 +222,8 @@ final class DiskTestEmulatorRunner {
                             nextFrameDeadline = Date().addingTimeInterval(frameInterval)
                         case .releaseKeyboard:
                             releasePressedKeys(&pressedKeyCodes, in: machine)
+                        case let .setBatteryRAMSettings(settings):
+                            machine.memory.setBatteryRAMSettings(settings)
                         case let .mountDisk(url, target):
                             do {
                                 _ = try machine.mountDiskImage(contentsOf: url, target: target)
@@ -246,7 +253,7 @@ final class DiskTestEmulatorRunner {
                     let batteryRAMRevision = machine.memory.batteryRAMRevision
                     if batteryRAMRevision != lastBatteryRAMRevision {
                         lastBatteryRAMRevision = batteryRAMRevision
-                        publishBatteryRAM(machine.memory.batteryRAMSnapshot, unlessCancelled: control, to: batteryRAMHandler)
+                        publishBatteryRAM(from: machine, unlessCancelled: control, to: batteryRAMHandler)
                     }
 
                     frameDelivery.deliver(
@@ -310,15 +317,19 @@ private func publishStatus(
 }
 
 private func publishBatteryRAM(
-    _ bytes: [UInt8],
+    from machine: IIGSMachine,
     unlessCancelled control: DiskTestRunControl,
-    to batteryRAMHandler: @escaping @MainActor @Sendable ([UInt8]) -> Void
+    to batteryRAMHandler: @escaping @MainActor @Sendable ([UInt8], IIGSBatteryRAMProfile, IIGSBatteryRAMSettings, Bool) -> Void
 ) {
+    let bytes = machine.memory.batteryRAMSnapshot
+    let profile = machine.memory.batteryRAMProfile
+    let settings = machine.memory.batteryRAMSettings
+    let checksumIsValid = machine.memory.batteryRAMChecksumIsValid
     Task { @MainActor in
         guard !control.isCancelled else {
             return
         }
-        batteryRAMHandler(bytes)
+        batteryRAMHandler(bytes, profile, settings, checksumIsValid)
     }
 }
 

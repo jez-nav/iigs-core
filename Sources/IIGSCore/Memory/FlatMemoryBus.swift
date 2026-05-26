@@ -1,3 +1,68 @@
+import Foundation
+
+public enum IIGSBatteryRAMProfile: Equatable, Sendable {
+    case rom01
+    case rom03
+}
+
+public struct IIGSBatteryRAMSettings: Equatable, Sendable {
+    public static let rom01Default = IIGSBatteryRAMSettings(
+        textColor: 0x0F,
+        backgroundColor: 0x06,
+        borderColor: 0x06,
+        userVolume: 0x0F,
+        slot5: 0x00,
+        slot6: 0x00,
+        slot7: 0x01,
+        startupSlot: 0x00,
+        visitMonitorCDAEnabled: false
+    )
+
+    public static let rom03Default = IIGSBatteryRAMSettings(
+        textColor: 0x0F,
+        backgroundColor: 0x06,
+        borderColor: 0x06,
+        userVolume: 0x0F,
+        slot5: 0x00,
+        slot6: 0x00,
+        slot7: 0x01,
+        startupSlot: 0x00,
+        visitMonitorCDAEnabled: true
+    )
+
+    public var textColor: UInt8
+    public var backgroundColor: UInt8
+    public var borderColor: UInt8
+    public var userVolume: UInt8
+    public var slot5: UInt8
+    public var slot6: UInt8
+    public var slot7: UInt8
+    public var startupSlot: UInt8
+    public var visitMonitorCDAEnabled: Bool
+
+    public init(
+        textColor: UInt8,
+        backgroundColor: UInt8,
+        borderColor: UInt8,
+        userVolume: UInt8,
+        slot5: UInt8,
+        slot6: UInt8,
+        slot7: UInt8,
+        startupSlot: UInt8,
+        visitMonitorCDAEnabled: Bool
+    ) {
+        self.textColor = textColor
+        self.backgroundColor = backgroundColor
+        self.borderColor = borderColor
+        self.userVolume = userVolume
+        self.slot5 = slot5
+        self.slot6 = slot6
+        self.slot7 = slot7
+        self.startupSlot = startupSlot
+        self.visitMonitorCDAEnabled = visitMonitorCDAEnabled
+    }
+}
+
 public final class FlatMemoryBus: IIGSBus {
     public static let fullAddressSpaceSize = 0x0100_0000
     public static let maximumExpansionRAMSize = 0x0080_0000
@@ -189,6 +254,7 @@ public final class FlatMemoryBus: IIGSBus {
         self.romImage = romImage
         softSwitches.setROMVersion(romImage.version)
         adbController.setROMVersion(romImage.version)
+        realTimeClock.setROMVersion(romImage.version)
     }
 
     public func loadCharacterROM(_ bytes: [UInt8], bank: Int = 0, invertedBits: Bool = false) {
@@ -219,12 +285,28 @@ public final class FlatMemoryBus: IIGSBus {
         realTimeClock.parameterRAMChecksumIsValid
     }
 
+    public var batteryRAMProfile: IIGSBatteryRAMProfile {
+        realTimeClock.parameterRAMProfile
+    }
+
+    public var batteryRAMSettings: IIGSBatteryRAMSettings {
+        realTimeClock.parameterRAMSettings
+    }
+
     public func loadBatteryRAM(_ bytes: [UInt8]) {
         realTimeClock.loadParameterRAM(bytes)
     }
 
     public func setBatteryRAMByte(_ value: UInt8, at index: UInt8, updateChecksum: Bool = true) {
         realTimeClock.setParameterRAMByte(value, at: index, updateChecksum: updateChecksum)
+    }
+
+    public func setBatteryRAMSettings(_ settings: IIGSBatteryRAMSettings) {
+        realTimeClock.setParameterRAMSettings(settings)
+    }
+
+    public func setRealTimeClockSecondsSince1904(_ seconds: UInt32) {
+        realTimeClock.setSecondsSince1904(seconds)
     }
 
     public func resetHardware(_ kind: IIGSResetKind = .cold) {
@@ -772,37 +854,25 @@ public final class FlatMemoryBus: IIGSBus {
 
 private struct IIGSRealTimeClock {
     private enum TransactionState {
-        case receiveCommand
-        case receiveBRAMAddress(read: Bool)
-        case readBRAM
-        case writeBRAM
-        case readClock(index: UInt32)
-        case writeClock(index: UInt32)
-        case registerWrite
+        case idle
+        case receiveExtendedBRAMAddress(readRequest: Bool)
+        case bram(index: UInt8, readRequest: Bool)
+        case clockByte(index: UInt8, readRequest: Bool)
+        case internalRegister(index: UInt8, readRequest: Bool)
     }
+
+    private static let appleEpochOffsetSeconds = UInt32(((66 * 365) + 17) * 24 * 60 * 60)
 
     private var dataRegister: UInt8 = 0
     private var controlRegister: UInt8 = 0
-    private var state: TransactionState = .receiveCommand
+    private var state: TransactionState = .idle
     private var bramIndex: UInt8 = 0
-    private var secondsSince1904: UInt32 = 0
+    private var activeParameterRAMProfile: IIGSBatteryRAMProfile = .rom01
+    private var usesProfileDefaultParameterRAM = true
+    private var secondsSince1904: UInt32 = IIGSRealTimeClock.hostSecondsSince1904()
+    private var fixedSecondsSince1904: UInt32?
     private var revision: UInt64 = 0
-    private var parameterRAM: [UInt8] = {
-        var bytes = Array(repeating: UInt8(0), count: 256)
-        // These are the control-panel display defaults copied by ROM startup
-        // into E1/02C0: white text, medium-blue background and border.
-        bytes[0x1A] = 0x0F
-        bytes[0x1B] = 0x06
-        bytes[0x1C] = 0x06
-        bytes[0x1E] = 0x0F // User volume.
-        bytes[0x20] = 0x01
-        bytes[0x25] = 0x00 // Slot 5 internal SmartPort / 3.5 drive firmware.
-        bytes[0x26] = 0x00 // Slot 6 internal 5.25 drive firmware.
-        bytes[0x27] = 0x01 // Slot 7 external "Your Card" unless user changes it.
-        bytes[0x28] = 0x00 // Startup Slot: scan.
-        Self.updateChecksum(in: &bytes)
-        return bytes
-    }()
+    private var parameterRAM: [UInt8] = IIGSRealTimeClock.defaultParameterRAM(for: .rom01)
 
     var parameterRAMSnapshot: [UInt8] {
         parameterRAM
@@ -814,6 +884,14 @@ private struct IIGSRealTimeClock {
 
     var parameterRAMChecksumIsValid: Bool {
         Self.checksumIsValid(parameterRAM)
+    }
+
+    var parameterRAMProfile: IIGSBatteryRAMProfile {
+        activeParameterRAMProfile
+    }
+
+    var parameterRAMSettings: IIGSBatteryRAMSettings {
+        Self.settings(from: parameterRAM)
     }
 
     mutating func readData() -> UInt8 {
@@ -835,114 +913,114 @@ private struct IIGSRealTimeClock {
         }
 
         guard value & 0x20 != 0 else {
-            state = .receiveCommand
+            state = .idle
             return
         }
 
-        let isReadOperation = value & 0x40 != 0
+        let controlRequestsRead = value & 0x40 != 0
         switch state {
-        case .receiveCommand:
+        case .idle:
+            guard !controlRequestsRead else {
+                state = .idle
+                return
+            }
             dispatchCommand(dataRegister)
-        case let .receiveBRAMAddress(read):
+        case let .receiveExtendedBRAMAddress(readRequest):
+            guard !controlRequestsRead, dataRegister & 0x83 == 0 else {
+                state = .idle
+                return
+            }
             bramIndex |= (dataRegister >> 2) & 0x1F
-            state = read ? .readBRAM : .writeBRAM
-        case .readBRAM:
-            if isReadOperation {
-                dataRegister = parameterRAM[Int(bramIndex)]
-                state = .receiveCommand
-            } else {
-                dispatchCommand(dataRegister)
-            }
-        case .writeBRAM:
-            if !isReadOperation {
-                parameterRAM[Int(bramIndex)] = dataRegister
+            state = .bram(index: bramIndex, readRequest: readRequest)
+        case let .bram(index, readRequest):
+            if controlRequestsRead, readRequest {
+                dataRegister = parameterRAM[Int(index)]
+            } else if !controlRequestsRead, !readRequest {
+                parameterRAM[Int(index)] = dataRegister
+                usesProfileDefaultParameterRAM = false
                 revision &+= 1
-                state = .receiveCommand
             }
-        case let .readClock(index):
-            if isReadOperation {
+            state = .idle
+        case let .clockByte(index, readRequest):
+            if controlRequestsRead, readRequest {
                 dataRegister = readClockByte(index: index)
-                state = .receiveCommand
-            } else {
-                dispatchCommand(dataRegister)
-            }
-        case let .writeClock(index):
-            if !isReadOperation {
+            } else if !controlRequestsRead, !readRequest {
                 writeClockByte(dataRegister, index: index)
-                state = .receiveCommand
             }
-        case .registerWrite:
-            break
+            state = .idle
+        case .internalRegister:
+            state = .idle
+        }
+    }
+
+    mutating func setROMVersion(_ version: IIGSROMVersion) {
+        let profile = IIGSBatteryRAMProfile(romVersion: version)
+        guard activeParameterRAMProfile != profile else {
+            return
+        }
+
+        activeParameterRAMProfile = profile
+        if usesProfileDefaultParameterRAM {
+            parameterRAM = Self.defaultParameterRAM(for: profile)
+            revision &+= 1
         }
     }
 
     mutating func resetTransientState() {
         dataRegister = 0
         controlRegister = 0
-        state = .receiveCommand
+        state = .idle
         bramIndex = 0
     }
 
     private mutating func dispatchCommand(_ value: UInt8) {
-        let command = (value >> 3) & 0x0F
-        let option = value & 0x07
         let commandRequestsRead = value & 0x80 != 0
+        let registerIndex = (value >> 2) & 0x03
+        let operation = (value >> 4) & 0x07
 
-        switch command {
+        switch operation {
         case 0x00:
-            let index = UInt32(option)
-            state = commandRequestsRead ? .readClock(index: index) : .writeClock(index: index)
-        case 0x01:
-            let index = UInt32(option) | 0x8000_0000
-            state = commandRequestsRead ? .readClock(index: index) : .writeClock(index: index)
-        case 0x06:
-            state = .registerWrite
-        case 0x07:
-            bramIndex = option << 5
-            state = .receiveBRAMAddress(read: commandRequestsRead)
-        default:
-            state = .receiveCommand
-        }
-    }
-
-    private func readClockByte(index: UInt32) -> UInt8 {
-        let option = UInt8(index & 0xFF)
-        guard option & 0x01 != 0 else {
-            return 0
-        }
-        if index & 0x8000_0000 != 0 {
-            return option & 0x04 != 0
-                ? UInt8((secondsSince1904 >> 24) & 0xFF)
-                : UInt8((secondsSince1904 >> 16) & 0xFF)
-        }
-        return option & 0x04 != 0
-            ? UInt8((secondsSince1904 >> 8) & 0xFF)
-            : UInt8(secondsSince1904 & 0xFF)
-    }
-
-    private mutating func writeClockByte(_ value: UInt8, index: UInt32) {
-        let option = UInt8(index & 0xFF)
-        guard option & 0x01 != 0 else {
-            return
-        }
-        if index & 0x8000_0000 != 0 {
-            if option & 0x04 != 0 {
-                secondsSince1904 = (secondsSince1904 & 0x00FF_FFFF) | (UInt32(value) << 24)
+            refreshClockForHostTime()
+            state = .clockByte(index: registerIndex, readRequest: commandRequestsRead)
+        case 0x02:
+            state = .bram(index: registerIndex &+ 0x10, readRequest: commandRequestsRead)
+        case 0x03:
+            if registerIndex & 0x02 != 0 {
+                bramIndex = (value & 0x07) << 5
+                state = .receiveExtendedBRAMAddress(readRequest: commandRequestsRead)
             } else {
-                secondsSince1904 = (secondsSince1904 & 0xFF00_FFFF) | (UInt32(value) << 16)
+                state = .internalRegister(index: registerIndex, readRequest: commandRequestsRead)
             }
-        } else if option & 0x04 != 0 {
-            secondsSince1904 = (secondsSince1904 & 0xFFFF_00FF) | (UInt32(value) << 8)
-        } else {
-            secondsSince1904 = (secondsSince1904 & 0xFFFF_FF00) | UInt32(value)
+        case 0x04...0x07:
+            state = .bram(index: (value >> 2) & 0x0F, readRequest: commandRequestsRead)
+        default:
+            state = .idle
         }
+    }
+
+    private func readClockByte(index: UInt8) -> UInt8 {
+        UInt8((secondsSince1904 >> (UInt32(index) * 8)) & 0xFF)
+    }
+
+    private mutating func writeClockByte(_ value: UInt8, index: UInt8) {
+        let shift = UInt32(index) * 8
+        let mask = UInt32(0xFF) << shift
+        secondsSince1904 = (secondsSince1904 & ~mask) | (UInt32(value) << shift)
+        fixedSecondsSince1904 = secondsSince1904
+    }
+
+    mutating func setSecondsSince1904(_ seconds: UInt32) {
+        secondsSince1904 = seconds
+        fixedSecondsSince1904 = seconds
     }
 
     mutating func loadParameterRAM(_ bytes: [UInt8]) {
         if bytes.count == parameterRAM.count, Self.checksumIsValid(bytes) {
             parameterRAM = bytes
+            usesProfileDefaultParameterRAM = false
         } else {
-            parameterRAM = Self.defaultParameterRAM()
+            parameterRAM = Self.defaultParameterRAM(for: activeParameterRAMProfile)
+            usesProfileDefaultParameterRAM = true
         }
         revision &+= 1
         resetTransientState()
@@ -950,15 +1028,80 @@ private struct IIGSRealTimeClock {
 
     mutating func setParameterRAMByte(_ value: UInt8, at index: UInt8, updateChecksum: Bool) {
         parameterRAM[Int(index)] = value
+        usesProfileDefaultParameterRAM = false
         if updateChecksum {
             Self.updateChecksum(in: &parameterRAM)
         }
         revision &+= 1
     }
 
-    private static func defaultParameterRAM() -> [UInt8] {
-        let clock = IIGSRealTimeClock()
-        return clock.parameterRAM
+    mutating func setParameterRAMSettings(_ settings: IIGSBatteryRAMSettings) {
+        parameterRAM[0x1A] = settings.textColor & 0x0F
+        parameterRAM[0x1B] = settings.backgroundColor & 0x0F
+        parameterRAM[0x1C] = settings.borderColor & 0x0F
+        parameterRAM[0x1E] = settings.userVolume & 0x0F
+        parameterRAM[0x25] = settings.slot5
+        parameterRAM[0x26] = settings.slot6
+        parameterRAM[0x27] = settings.slot7
+        parameterRAM[0x28] = settings.startupSlot & 0x07
+        if settings.visitMonitorCDAEnabled {
+            parameterRAM[0x59] |= 0x80
+        } else {
+            parameterRAM[0x59] &= 0x7F
+        }
+        Self.updateChecksum(in: &parameterRAM)
+        usesProfileDefaultParameterRAM = false
+        revision &+= 1
+    }
+
+    private mutating func refreshClockForHostTime() {
+        guard fixedSecondsSince1904 == nil else {
+            return
+        }
+        secondsSince1904 = Self.hostSecondsSince1904()
+    }
+
+    private static func defaultParameterRAM(for profile: IIGSBatteryRAMProfile) -> [UInt8] {
+        var bytes = Array(repeating: UInt8(0), count: 256)
+        // These are the control-panel display defaults copied by ROM startup
+        // into E1/02C0: white text, medium-blue background and border.
+        bytes[0x1A] = 0x0F
+        bytes[0x1B] = 0x06
+        bytes[0x1C] = 0x06
+        bytes[0x1E] = 0x0F // User volume.
+        bytes[0x20] = 0x01
+        bytes[0x25] = 0x00 // Slot 5 internal SmartPort / 3.5 drive firmware.
+        bytes[0x26] = 0x00 // Slot 6 internal 5.25 drive firmware.
+        bytes[0x27] = 0x01 // Slot 7 external "Your Card" unless user changes it.
+        bytes[0x28] = 0x00 // Startup Slot: scan.
+        if profile == .rom03 {
+            // ROM 03 uses BRAM $59 to decide whether Visit Monitor/Memory
+            // Peeker CDAs are installed during boot.
+            bytes[0x59] = 0x80
+        }
+        updateChecksum(in: &bytes)
+        return bytes
+    }
+
+    private static func settings(from bytes: [UInt8]) -> IIGSBatteryRAMSettings {
+        IIGSBatteryRAMSettings(
+            textColor: bytes[0x1A],
+            backgroundColor: bytes[0x1B],
+            borderColor: bytes[0x1C],
+            userVolume: bytes[0x1E],
+            slot5: bytes[0x25],
+            slot6: bytes[0x26],
+            slot7: bytes[0x27],
+            startupSlot: bytes[0x28],
+            visitMonitorCDAEnabled: bytes[0x59] & 0x80 != 0
+        )
+    }
+
+    private static func hostSecondsSince1904(date: Date = Date()) -> UInt32 {
+        let localizedUnixSeconds = date.timeIntervalSince1970
+            + Double(TimeZone.current.secondsFromGMT(for: date))
+        let appleSeconds = localizedUnixSeconds + Double(appleEpochOffsetSeconds)
+        return UInt32(min(max(appleSeconds, 0), Double(UInt32.max)))
     }
 
     private static func checksumIsValid(_ bytes: [UInt8]) -> Bool {
@@ -991,5 +1134,16 @@ private struct IIGSRealTimeClock {
             checksum = checksum &+ word
         }
         return checksum
+    }
+}
+
+private extension IIGSBatteryRAMProfile {
+    init(romVersion: IIGSROMVersion) {
+        switch romVersion {
+        case .rom01:
+            self = .rom01
+        case .rom03:
+            self = .rom03
+        }
     }
 }

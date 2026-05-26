@@ -98,6 +98,10 @@ struct DiskTestContentView: View {
 
             Divider()
 
+            batteryRAMPanel
+
+            Divider()
+
             Text(store.diskStatus)
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
@@ -146,6 +150,89 @@ struct DiskTestContentView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
+        }
+        .padding(14)
+    }
+
+    private var batteryRAMPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("Battery RAM", systemImage: "memorychip")
+                    .font(.system(.subheadline, weight: .semibold))
+
+                Spacer()
+
+                Text(batteryRAMProfileText)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                Picker("Startup", selection: settingsByteBinding(\.startupSlot, mask: 0x07)) {
+                    Text("Scan").tag(0)
+                    ForEach(1...7, id: \.self) { slot in
+                        Text("Slot \(slot)").tag(slot)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Toggle(
+                    "Visit Monitor",
+                    isOn: Binding(
+                        get: { store.batteryRAMSettings.visitMonitorCDAEnabled },
+                        set: { enabled in
+                            updateBatteryRAMSettings { $0.visitMonitorCDAEnabled = enabled }
+                        }
+                    )
+                )
+                .disabled(store.batteryRAMProfile != .rom03)
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "speaker.wave.1")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+
+                Slider(
+                    value: Binding(
+                        get: { Double(store.batteryRAMSettings.userVolume & 0x0F) },
+                        set: { value in
+                            updateBatteryRAMSettings { $0.userVolume = UInt8(value.rounded()) & 0x0F }
+                        }
+                    ),
+                    in: 0...15,
+                    step: 1
+                )
+
+                Text("\(Int(store.batteryRAMSettings.userVolume & 0x0F))")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20, alignment: .trailing)
+            }
+
+            HStack(spacing: 8) {
+                colorPicker("Text", selection: settingsByteBinding(\.textColor, mask: 0x0F))
+                colorPicker("Back", selection: settingsByteBinding(\.backgroundColor, mask: 0x0F))
+                colorPicker("Border", selection: settingsByteBinding(\.borderColor, mask: 0x0F))
+            }
+
+            HStack(spacing: 8) {
+                slotPicker("S5", selection: settingsByteBinding(\.slot5, mask: 0x01))
+                slotPicker("S6", selection: settingsByteBinding(\.slot6, mask: 0x01))
+                slotPicker("S7", selection: settingsByteBinding(\.slot7, mask: 0x01))
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: store.batteryRAMChecksumIsValid ? "checkmark.seal" : "exclamationmark.triangle")
+                    .foregroundStyle(store.batteryRAMChecksumIsValid ? Color.green : Color.orange)
+                    .frame(width: 18)
+
+                Text(store.batteryRAMChecksumIsValid ? "Checksum OK" : "Checksum Invalid")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
         .padding(14)
     }
@@ -258,7 +345,85 @@ struct DiskTestContentView: View {
         }
         return CGFloat(max(1, frame.width)) / CGFloat(max(1, frame.height))
     }
+
+    private var batteryRAMProfileText: String {
+        switch store.batteryRAMProfile {
+        case .rom01:
+            "ROM 01"
+        case .rom03:
+            "ROM 03"
+        }
+    }
+
+    private func updateBatteryRAMSettings(_ update: (inout IIGSBatteryRAMSettings) -> Void) {
+        var settings = store.batteryRAMSettings
+        update(&settings)
+        store.setBatteryRAMSettings(settings)
+    }
+
+    private func settingsByteBinding(
+        _ keyPath: WritableKeyPath<IIGSBatteryRAMSettings, UInt8>,
+        mask: UInt8
+    ) -> Binding<Int> {
+        Binding(
+            get: { Int(store.batteryRAMSettings[keyPath: keyPath] & mask) },
+            set: { value in
+                updateBatteryRAMSettings { settings in
+                    settings[keyPath: keyPath] = UInt8(value) & mask
+                }
+            }
+        )
+    }
+
+    private func colorPicker(_ title: String, selection: Binding<Int>) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(iigsControlPanelColors) { option in
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(option.color)
+                        .frame(width: 12, height: 12)
+
+                    Text(option.name)
+                }
+                .tag(option.id)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    private func slotPicker(_ title: String, selection: Binding<Int>) -> some View {
+        Picker(title, selection: selection) {
+            Text("Internal").tag(0)
+            Text("Your Card").tag(1)
+        }
+        .pickerStyle(.menu)
+    }
 }
+
+private struct IIGSControlPanelColor: Identifiable {
+    let id: Int
+    let name: String
+    let color: Color
+}
+
+private let iigsControlPanelColors = [
+    IIGSControlPanelColor(id: 0x0, name: "Black", color: Color(red: 0.05, green: 0.05, blue: 0.05)),
+    IIGSControlPanelColor(id: 0x1, name: "Deep Red", color: Color(red: 0.72, green: 0.08, blue: 0.08)),
+    IIGSControlPanelColor(id: 0x2, name: "Dark Blue", color: Color(red: 0.18, green: 0.18, blue: 0.72)),
+    IIGSControlPanelColor(id: 0x3, name: "Purple", color: Color(red: 0.72, green: 0.18, blue: 0.72)),
+    IIGSControlPanelColor(id: 0x4, name: "Dark Green", color: Color(red: 0.08, green: 0.48, blue: 0.08)),
+    IIGSControlPanelColor(id: 0x5, name: "Gray", color: Color(red: 0.48, green: 0.48, blue: 0.48)),
+    IIGSControlPanelColor(id: 0x6, name: "Medium Blue", color: Color(red: 0.18, green: 0.48, blue: 0.92)),
+    IIGSControlPanelColor(id: 0x7, name: "Light Blue", color: Color(red: 0.62, green: 0.78, blue: 1.00)),
+    IIGSControlPanelColor(id: 0x8, name: "Brown", color: Color(red: 0.48, green: 0.26, blue: 0.08)),
+    IIGSControlPanelColor(id: 0x9, name: "Orange", color: Color(red: 0.92, green: 0.48, blue: 0.08)),
+    IIGSControlPanelColor(id: 0xA, name: "Light Gray", color: Color(red: 0.72, green: 0.72, blue: 0.72)),
+    IIGSControlPanelColor(id: 0xB, name: "Pink", color: Color(red: 1.00, green: 0.62, blue: 0.72)),
+    IIGSControlPanelColor(id: 0xC, name: "Green", color: Color(red: 0.08, green: 0.78, blue: 0.08)),
+    IIGSControlPanelColor(id: 0xD, name: "Yellow", color: Color(red: 0.95, green: 0.85, blue: 0.12)),
+    IIGSControlPanelColor(id: 0xE, name: "Aqua", color: Color(red: 0.45, green: 0.92, blue: 0.92)),
+    IIGSControlPanelColor(id: 0xF, name: "White", color: Color(red: 0.96, green: 0.96, blue: 0.96))
+]
 
 private enum DiskTestMountOption: CaseIterable, Identifiable, Equatable {
     case smartPort1

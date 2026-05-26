@@ -283,6 +283,86 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         XCTAssertTrue(memory.batteryRAMChecksumIsValid)
     }
 
+    func testROM03SelectsBatteryRAMProfileDefaults() throws {
+        let rom = try IIGSROMImage(bytes: Array(repeating: 0, count: IIGSROMVersion.rom03.expectedSize))
+        let memory = FlatMemoryBus()
+
+        memory.installROM(rom)
+
+        XCTAssertEqual(memory.batteryRAMProfile, .rom03)
+        XCTAssertEqual(memory.batteryRAMSnapshot[0x59] & 0x80, 0x80)
+        XCTAssertTrue(memory.batteryRAMChecksumIsValid)
+        XCTAssertTrue(batteryRAMChecksumIsValid(memory.batteryRAMSnapshot))
+    }
+
+    func testLoadedBatteryRAMSurvivesROMProfileSelection() throws {
+        let sourceMemory = FlatMemoryBus()
+        sourceMemory.setBatteryRAMByte(0x06, at: 0x28)
+        let savedBytes = sourceMemory.batteryRAMSnapshot
+        let rom = try IIGSROMImage(bytes: Array(repeating: 0, count: IIGSROMVersion.rom03.expectedSize))
+        let memory = FlatMemoryBus()
+
+        memory.loadBatteryRAM(savedBytes)
+        memory.installROM(rom)
+
+        XCTAssertEqual(memory.batteryRAMProfile, .rom03)
+        XCTAssertEqual(memory.batteryRAMSnapshot[0x28], 0x06)
+        XCTAssertEqual(memory.batteryRAMSnapshot[0x59] & 0x80, 0x00)
+        XCTAssertTrue(memory.batteryRAMChecksumIsValid)
+    }
+
+    func testBatteryRAMSettingsHelperPreservesChecksum() {
+        let memory = FlatMemoryBus()
+        var settings = memory.batteryRAMSettings
+
+        settings.textColor = 0x12
+        settings.backgroundColor = 0x13
+        settings.borderColor = 0x14
+        settings.userVolume = 0x15
+        settings.startupSlot = 0x0D
+        settings.slot5 = 0x02
+        settings.slot6 = 0x03
+        settings.slot7 = 0x04
+        settings.visitMonitorCDAEnabled = true
+        memory.setBatteryRAMSettings(settings)
+
+        let bytes = memory.batteryRAMSnapshot
+        XCTAssertEqual(bytes[0x1A], 0x02)
+        XCTAssertEqual(bytes[0x1B], 0x03)
+        XCTAssertEqual(bytes[0x1C], 0x04)
+        XCTAssertEqual(bytes[0x1E], 0x05)
+        XCTAssertEqual(bytes[0x25], 0x02)
+        XCTAssertEqual(bytes[0x26], 0x03)
+        XCTAssertEqual(bytes[0x27], 0x04)
+        XCTAssertEqual(bytes[0x28], 0x05)
+        XCTAssertEqual(bytes[0x59] & 0x80, 0x80)
+        XCTAssertTrue(memory.batteryRAMChecksumIsValid)
+        XCTAssertTrue(batteryRAMChecksumIsValid(bytes))
+    }
+
+    func testRealTimeClockReadsFixedSecondsSince1904() {
+        let memory = FlatMemoryBus()
+
+        memory.setRealTimeClockSecondsSince1904(0x0102_0304)
+
+        XCTAssertEqual(readClockByte(memory, index: 0), 0x04)
+        XCTAssertEqual(readClockByte(memory, index: 1), 0x03)
+        XCTAssertEqual(readClockByte(memory, index: 2), 0x02)
+        XCTAssertEqual(readClockByte(memory, index: 3), 0x01)
+    }
+
+    func testRealTimeClockWritesSecondsThroughProtocol() {
+        let memory = FlatMemoryBus()
+
+        memory.setRealTimeClockSecondsSince1904(0x0102_0304)
+        writeClockByte(0xAA, to: memory, index: 1)
+
+        XCTAssertEqual(readClockByte(memory, index: 0), 0x04)
+        XCTAssertEqual(readClockByte(memory, index: 1), 0xAA)
+        XCTAssertEqual(readClockByte(memory, index: 2), 0x02)
+        XCTAssertEqual(readClockByte(memory, index: 3), 0x01)
+    }
+
     func testLanguageCardSoftSwitchesSelectROMOrWritableRAM() throws {
         var bytes = Array(repeating: UInt8(0), count: IIGSROMVersion.rom01.expectedSize)
         bytes[0x1D000] = 0xA5
@@ -412,5 +492,19 @@ final class SoftSwitchPhase4Tests: XCTestCase {
         let stored = UInt16(bytes[0xFC]) | (UInt16(bytes[0xFD]) << 8)
         let complement = UInt16(bytes[0xFE]) | (UInt16(bytes[0xFF]) << 8)
         return stored == checksum && complement == (checksum ^ 0xAAAA)
+    }
+
+    private func readClockByte(_ memory: FlatMemoryBus, index: UInt8) -> UInt8 {
+        memory[0x00C033] = 0x80 | ((index & 0x03) << 2)
+        memory[0x00C034] = 0xA0
+        memory[0x00C034] = 0xE0
+        return memory[0x00C033]
+    }
+
+    private func writeClockByte(_ value: UInt8, to memory: FlatMemoryBus, index: UInt8) {
+        memory[0x00C033] = (index & 0x03) << 2
+        memory[0x00C034] = 0xA0
+        memory[0x00C033] = value
+        memory[0x00C034] = 0xA0
     }
 }
