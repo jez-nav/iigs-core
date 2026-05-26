@@ -193,6 +193,49 @@ final class InputPhase7Tests: XCTestCase {
         XCTAssertEqual(memory[0x00C027] & 0x08, 0x00)
     }
 
+    func testOpenAppleControlEscapeRaisesDeskManagerInterrupt() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C027] = 0x10
+        memory.adbController.setModifiers([.control, .command])
+        memory.adbController.queueKeyboardEvent(keyCode: 0x35, isKeyUp: false)
+
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x20)
+        XCTAssertTrue(memory.adbController.irqAsserted)
+        XCTAssertEqual(memory[0x00C026], 0x20)
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x00)
+        XCTAssertFalse(memory.adbController.irqAsserted)
+    }
+
+    func testOpenAppleControlEscapeCombinesWithPendingADBHeader() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C027] = 0x10
+        memory[0x00C026] = 0xF2
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x20)
+
+        memory.adbController.setModifiers([.control, .command])
+        memory.adbController.queueKeyboardEvent(keyCode: 0x35, isKeyUp: false)
+
+        XCTAssertTrue(memory.adbController.irqAsserted)
+        XCTAssertEqual(memory[0x00C026], 0xA1)
+        XCTAssertEqual(memory[0x00C026], 0x02)
+        XCTAssertEqual(memory[0x00C026], 0x02)
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x00)
+        XCTAssertFalse(memory.adbController.irqAsserted)
+    }
+
+    func testEscapeWithoutClassicDeskAccessoryModifiersDoesNotRaiseDeskManagerInterrupt() {
+        let memory = FlatMemoryBus()
+
+        memory[0x00C027] = 0x10
+        memory.adbController.setModifiers([.control])
+        memory.adbController.queueKeyboardEvent(keyCode: 0x35, isKeyUp: false)
+
+        XCTAssertEqual(memory[0x00C027] & 0x20, 0x00)
+        XCTAssertFalse(memory.adbController.irqAsserted)
+    }
+
     func testMouseMovementIsAvailableThroughMouseRegisterPath() {
         let memory = FlatMemoryBus()
 

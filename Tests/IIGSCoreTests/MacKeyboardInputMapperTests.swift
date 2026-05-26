@@ -169,6 +169,68 @@ final class MacKeyboardInputMapperTests: XCTestCase {
         XCTAssertFalse(events[3].modifiers.contains(.control))
     }
 
+    func testClassicDeskAccessoryKeyPressSendsOpenAppleControlEscape() throws {
+        let events = MacKeyboardInputMapper.classicDeskAccessoryKeyPress()
+
+        XCTAssertEqual(events.map(\.keyCode), [0x36, 0x37, 0x35, 0x35, 0x36, 0x37])
+        XCTAssertEqual(events.map(\.isKeyUp), [false, false, false, true, true, true])
+        XCTAssertEqual(events[2].ascii, 0x1B)
+        XCTAssertTrue(events[2].modifiers.contains(.control))
+        XCTAssertTrue(events[2].modifiers.contains(.command))
+        XCTAssertTrue(events[3].modifiers.contains(.control))
+        XCTAssertTrue(events[3].modifiers.contains(.command))
+        XCTAssertFalse(events[4].modifiers.contains(.control))
+        XCTAssertFalse(events[5].modifiers.contains(.command))
+    }
+
+    func testClassicDeskAccessoryGroupsKeepModifiersLatchedThroughEscape() throws {
+        let groups = MacKeyboardInputMapper.classicDeskAccessoryEventGroups()
+        let machine = IIGSMachine()
+
+        XCTAssertEqual(groups.map(\.count), [2, 1, 1, 2])
+
+        for event in groups[0] {
+            event.apply(to: machine)
+        }
+        XCTAssertEqual(
+            machine.memory[0x00C025] & (IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue),
+            IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue
+        )
+
+        groups[1][0].apply(to: machine)
+        XCTAssertEqual(machine.memory[0x00C000], 0x9B)
+        XCTAssertEqual(machine.memory[0x00C027] & 0x20, 0x20)
+        XCTAssertEqual(machine.memory[0x00C026], 0x20)
+        XCTAssertEqual(
+            machine.memory[0x00C025] & (IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue),
+            IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue
+        )
+
+        groups[2][0].apply(to: machine)
+        XCTAssertEqual(
+            machine.memory[0x00C025] & (IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue),
+            IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue
+        )
+
+        for event in groups[3] {
+            event.apply(to: machine)
+        }
+        XCTAssertEqual(machine.memory[0x00C025] & IIGSADBModifiers.control.rawValue, 0)
+        XCTAssertEqual(machine.memory[0x00C025] & IIGSADBModifiers.command.rawValue, 0)
+    }
+
+    func testControlCommandEscapeKeyEquivalentTriggersClassicDeskAccessoryOnlyOnce() throws {
+        let event = try makeKeyEvent(keyCode: 0x35, flags: [.control, .command])
+        let events = MacKeyboardInputMapper.keyEquivalentEvents(from: event)
+
+        XCTAssertEqual(events.map(\.keyCode), [0x35, 0x35])
+        XCTAssertEqual(events.map(\.isKeyUp), [false, true])
+        XCTAssertEqual(events[0].ascii, 0x1B)
+        XCTAssertTrue(events[0].modifiers.contains(.control))
+        XCTAssertTrue(events[0].modifiers.contains(.command))
+        XCTAssertTrue(MacKeyboardInputMapper.keyUpEvents(from: event).isEmpty)
+    }
+
     func testSyntheticBasicTextProducesPacedKeyGroups() throws {
         let groups = MacKeyboardInputMapper.textInputEventGroups(for: "10 PRINT \"OK\"\n")
         let downEvents = groups.compactMap(\.first)

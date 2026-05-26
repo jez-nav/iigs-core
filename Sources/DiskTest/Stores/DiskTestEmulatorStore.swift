@@ -27,6 +27,7 @@ final class DiskTestEmulatorStore: ObservableObject {
     private var lastDisplayMouseX: Int?
     private var lastDisplayMouseY: Int?
     private var lastMouseButtonDown = false
+    private var classicDeskAccessoryTask: Task<Void, Never>?
 
     var windowTitle: String {
         "DiskTest - EM \(emulatorFPS) - UI \(uiFPS)"
@@ -76,6 +77,8 @@ final class DiskTestEmulatorStore: ObservableObject {
     }
 
     func stop() {
+        classicDeskAccessoryTask?.cancel()
+        classicDeskAccessoryTask = nil
         runner.stop()
         audioPlayer.stop()
         audioAvailable = false
@@ -154,6 +157,26 @@ final class DiskTestEmulatorStore: ObservableObject {
     func sendControlPanelResetKey() {
         runner.keyboardReset(modifiers: .option)
         inputStatus = "Option-Reset requested"
+    }
+
+    func sendClassicDeskAccessoryKey() {
+        inputStatus = "Classic Desk Accessory requested"
+        classicDeskAccessoryTask?.cancel()
+        runner.releaseKeyboard()
+        classicDeskAccessoryTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            let groups = MacKeyboardInputMapper.classicDeskAccessoryEventGroups()
+            for (index, events) in groups.enumerated() {
+                guard let self, !Task.isCancelled else {
+                    return
+                }
+                self.enqueue(events)
+                if index < groups.count - 1 {
+                    try? await Task.sleep(nanoseconds: 80_000_000)
+                }
+            }
+            self?.inputStatus = "Classic Desk Accessory sent"
+        }
     }
 
     func typeBasicSmokeTest() {

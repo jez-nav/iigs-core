@@ -70,10 +70,25 @@ struct IIGSHostMouseEvent: Equatable, Sendable {
 }
 
 enum MacKeyboardInputMapper {
+    private static let classicDeskAccessoryModifiers: IIGSADBModifiers = [.control, .command]
+
     static func resetKeyPress(modifiers: IIGSADBModifiers = []) -> [IIGSHostKeyEvent] {
         modifierEvents(for: modifiers, isKeyUp: false)
             + keyPressEvents(ascii: nil, keyCode: 0x7F, modifiers: modifiers, keyUpModifiers: modifiers)
             + modifierEvents(for: modifiers, isKeyUp: true)
+    }
+
+    static func classicDeskAccessoryKeyPress() -> [IIGSHostKeyEvent] {
+        classicDeskAccessoryEventGroups().flatMap { $0 }
+    }
+
+    static func classicDeskAccessoryEventGroups() -> [[IIGSHostKeyEvent]] {
+        [
+            modifierEvents(for: classicDeskAccessoryModifiers, isKeyUp: false),
+            [classicDeskAccessoryEscapeKey(isKeyUp: false)],
+            [classicDeskAccessoryEscapeKey(isKeyUp: true)],
+            modifierEvents(for: classicDeskAccessoryModifiers, isKeyUp: true)
+        ]
     }
 
     static func textInputEventGroups(for text: String) -> [[IIGSHostKeyEvent]] {
@@ -112,6 +127,10 @@ enum MacKeyboardInputMapper {
     }
 
     static func keyDownEvents(from event: NSEvent) -> [IIGSHostKeyEvent] {
+        if isClassicDeskAccessoryTrigger(event) {
+            return classicDeskAccessoryEscapeKeyPress()
+        }
+
         if event.keyCode == 0x7E, !event.isARepeat {
             return cursorUpEscapeSequence()
         }
@@ -130,6 +149,10 @@ enum MacKeyboardInputMapper {
     }
 
     static func keyUpEvents(from event: NSEvent) -> [IIGSHostKeyEvent] {
+        if isClassicDeskAccessoryTrigger(event) {
+            return []
+        }
+
         if event.keyCode == 0x7E {
             return []
         }
@@ -140,6 +163,10 @@ enum MacKeyboardInputMapper {
     static func keyEquivalentEvents(from event: NSEvent) -> [IIGSHostKeyEvent] {
         guard event.type == .keyDown else {
             return []
+        }
+
+        if isClassicDeskAccessoryTrigger(event) {
+            return classicDeskAccessoryEscapeKeyPress()
         }
 
         let downEvents = keyDownEvents(from: event)
@@ -316,6 +343,12 @@ enum MacKeyboardInputMapper {
         }
     }
 
+    private static func isClassicDeskAccessoryTrigger(_ event: NSEvent) -> Bool {
+        event.keyCode == 0x35
+            && event.modifierFlags.contains(.control)
+            && event.modifierFlags.contains(.command)
+    }
+
     private static func modifierEvents(for modifiers: IIGSADBModifiers, isKeyUp: Bool) -> [IIGSHostKeyEvent] {
         let eventModifiers: IIGSADBModifiers = isKeyUp ? [] : modifiers
         var events: [IIGSHostKeyEvent] = []
@@ -335,6 +368,22 @@ enum MacKeyboardInputMapper {
             events.append(IIGSHostKeyEvent(ascii: nil, keyCode: 0x3A, modifiers: eventModifiers, isKeyUp: isKeyUp))
         }
         return events
+    }
+
+    private static func classicDeskAccessoryEscapeKeyPress() -> [IIGSHostKeyEvent] {
+        [
+            classicDeskAccessoryEscapeKey(isKeyUp: false),
+            classicDeskAccessoryEscapeKey(isKeyUp: true)
+        ]
+    }
+
+    private static func classicDeskAccessoryEscapeKey(isKeyUp: Bool) -> IIGSHostKeyEvent {
+        IIGSHostKeyEvent(
+            ascii: isKeyUp ? nil : 0x1B,
+            keyCode: 0x35,
+            modifiers: classicDeskAccessoryModifiers,
+            isKeyUp: isKeyUp
+        )
     }
 
     private static func cursorUpEscapeSequence() -> [IIGSHostKeyEvent] {

@@ -227,6 +227,10 @@ struct DiskTestContentView: View {
                 Label("Control Panel", systemImage: "gearshape")
             }
 
+            Button(action: store.sendClassicDeskAccessoryKey) {
+                Label("Desk Accessory", systemImage: "menubar.rectangle")
+            }
+
             Button(action: store.typeBasicSmokeTest) {
                 Label("Type BASIC Test", systemImage: "keyboard")
             }

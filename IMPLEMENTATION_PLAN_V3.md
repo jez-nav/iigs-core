@@ -74,7 +74,11 @@ This is the forward implementation plan after the DiskTest boot milestone. V2 re
   - Verify GS/OS Finder pointer movement, menu selection, and double-click/open behavior.
 - Add Control Panel and desk accessory workflows:
   - Keep the current Option-Reset startup Control Panel button.
-  - Add Apple-Control-Escape for the in-session Classic Desk Accessory path.
+  - Current Classic Desk Accessory pass:
+    - Add a DiskTest Desk Accessory button that sends a paced Open-Apple-Control-Escape chord in-session so the guest can poll latched modifiers before release.
+    - Raise the IIgs ADB Desk Manager interrupt byte when Escape is pressed while Control and Open-Apple are latched, keeping it separate from normal ADB response payloads so it can combine with a pending response header.
+    - Route host Control-Command-Escape to the same guest Escape chord when the display surface has keyboard focus.
+    - Add a DiskTest app menu shortcut for the same action so command-key routing still works outside the raw display responder path.
   - Add tests for modifier/key event ordering so reset and CDA shortcuts preserve the intended modifier state.
 
 ## BRAM, RTC, And ROM Compatibility

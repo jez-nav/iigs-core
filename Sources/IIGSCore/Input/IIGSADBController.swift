@@ -24,6 +24,7 @@ public final class IIGSADBController {
     private var keyboardLatch: UInt8 = 0
     private var keyboardStrobe = false
     private var appleIIKeyBuffer: [AppleIIKeyPress] = []
+    private var interruptByte: UInt8 = 0
     private var responseHeader: UInt8?
     private var responseQueue: [UInt8] = []
     private var keyboardEvents: [UInt8] = []
@@ -58,7 +59,7 @@ public final class IIGSADBController {
         if mouseDataAvailable {
             status |= 0x80
         }
-        if responseHeader != nil || !responseQueue.isEmpty {
+        if interruptByte != 0 || responseHeader != nil || !responseQueue.isEmpty {
             status |= 0x20
         }
         if !keyboardEvents.isEmpty {
@@ -91,6 +92,7 @@ public final class IIGSADBController {
     public func reset() {
         responseHeader = nil
         responseQueue.removeAll()
+        interruptByte = 0
         keyboardEvents.removeAll()
         pendingCommand = nil
         modifierRegister = 0
@@ -129,6 +131,9 @@ public final class IIGSADBController {
     }
 
     public func queueKeyboardEvent(keyCode: UInt8, isKeyUp: Bool = false) {
+        if !isKeyUp, keyCode == 0x35, classicDeskAccessoryModifiersAreDown {
+            queueClassicDeskAccessoryInterrupt()
+        }
         keyboardEvents.append((keyCode & 0x7F) | (isKeyUp ? 0x80 : 0x00))
     }
 
@@ -174,8 +179,16 @@ public final class IIGSADBController {
         commandFull = false
         if let header = responseHeader {
             responseHeader = nil
-            traceEvent("R C026 header \(hex(header))")
-            return header
+            let value = header | interruptByte
+            interruptByte = 0
+            traceEvent("R C026 header \(hex(value))")
+            return value
+        }
+        if interruptByte != 0 {
+            let value = interruptByte
+            interruptByte = 0
+            traceEvent("R C026 interrupt \(hex(value))")
+            return value
         }
         guard !responseQueue.isEmpty else {
             traceEvent("R C026 empty 00")
@@ -450,6 +463,7 @@ public final class IIGSADBController {
     }
 
     private func abortCommand() {
+        interruptByte = 0
         responseHeader = nil
         responseQueue.removeAll()
         pendingCommand = nil
@@ -507,6 +521,11 @@ public final class IIGSADBController {
             || mouseButtonDown != reportedMouseButtonDown
     }
 
+    private var classicDeskAccessoryModifiersAreDown: Bool {
+        let required = IIGSADBModifiers.control.rawValue | IIGSADBModifiers.command.rawValue
+        return modifierRegister & required == required
+    }
+
     private func readMouseRegisterZeroPacket() -> [UInt8] {
         let dx = clampedMouseDelta(from: reportedMouseX, to: mouseX)
         let dy = clampedMouseDelta(from: reportedMouseY, to: mouseY)
@@ -537,6 +556,11 @@ public final class IIGSADBController {
         responseHeader = nil
         responseQueue = bytes
         traceEvent("Q result \(bytes.map(hex).joined(separator: " "))")
+    }
+
+    private func queueClassicDeskAccessoryInterrupt() {
+        interruptByte |= 0x20
+        traceEvent("Q desk-manager-interrupt 20")
     }
 
     private func queueDeviceResponse(_ bytes: [UInt8]) {
